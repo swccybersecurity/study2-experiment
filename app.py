@@ -2,35 +2,50 @@ import streamlit as st
 import random
 import time
 
+# --- 頁面設定 ---
 st.set_page_config(page_title="購物體驗研究", layout="centered")
 
-# --- 核心改動 1: 定義跳轉函式 (Callback) ---
-# 這個函式會在按鈕按下的「瞬間」執行，比頁面刷新還快
+# --- 核心函式：頁面跳轉 (Callback) ---
+# 這個函式會在按鈕按下的「瞬間」執行，確保狀態切換後才刷新頁面
 def go_to_step(next_step):
     st.session_state['step'] = next_step
-    # 這裡不需要 st.rerun()，因為 on_click 執行完會自動 rerun
+    # 這裡不需要 st.rerun()，Streamlit 執行完 callback 會自動刷新
 
-# --- 初始化 Session State ---
-if 'experiment_group' not in st.session_state:
+# --- 1. 初始化 Session State (修正版) ---
+# 修正點：檢查 'step' 是否存在。如果存在，代表已經初始化過，就跳過這段。
+if 'step' not in st.session_state:
     security_levels = ['Strong', 'Weak']
     involvement_levels = ['High', 'Low']
     
+    # 隨機分派組別
     st.session_state['security'] = random.choice(security_levels)
     st.session_state['involvement'] = random.choice(involvement_levels)
+    
+    # 設定初始步驟與時間
     st.session_state['step'] = 'consent' 
     st.session_state['start_time'] = time.time()
 
-# --- 輔助函數：模擬電商介面 (不用改) ---
+# --- 2. 輔助函數：模擬電商介面 ---
 def render_ecommerce_page(security, involvement):
     st.markdown("---")
+    
+    # Header 區塊：資安訊號
     col1, col2 = st.columns([3, 1])
     with col1:
         st.subheader("🛒 SuperStore 結帳櫃檯")
     with col2:
         if security == 'Strong':
-            st.markdown("""<div style="text-align: right; color: green; font-size: 0.8em;">🔒 <b>SSL 加密連線</b><br>✅ <b>ISO 27001 認證</b></div>""", unsafe_allow_html=True)
+            st.markdown(
+                """<div style="text-align: right; color: green; font-size: 0.8em;">
+                🔒 <b>SSL 加密連線</b><br>
+                ✅ <b>ISO 27001 認證</b>
+                </div>""", 
+                unsafe_allow_html=True
+            )
 
     st.markdown("---")
+    
+    # Product 區塊：產品呈現
     prod_col1, prod_col2 = st.columns([1, 2])
     
     with prod_col1:
@@ -49,12 +64,16 @@ def render_ecommerce_page(security, involvement):
         st.write("運費：免運費")
         st.text_input("信用卡號碼", placeholder="**** **** **** 1234", disabled=True)
         st.text_input("收件地址", placeholder="請輸入您的地址...", disabled=True)
+        
+        # 強訊號組的額外承諾
         if security == 'Strong':
             st.info("🛡️ **安心保證**：本站若發生個資外洩，承諾提供全額賠償。")
+        
         st.button("確認結帳 (模擬按鈕)", disabled=True)
+    
     st.markdown("---")
 
-# --- 主程式流程 ---
+# --- 3. 主程式流程控制 ---
 
 # 階段 1: 知情同意
 if st.session_state['step'] == 'consent':
@@ -62,10 +81,10 @@ if st.session_state['step'] == 'consent':
     st.write("您好，感謝您參與本研究。本研究旨在了解消費者的網購體驗。")
     st.write("請想像您正在瀏覽接下來的購物網站，並準備進行結帳。")
     
-    # --- 核心改動 2: 使用 on_click ---
+    # 使用 callback 跳轉，避免卡住
     st.button("我同意參與並開始", on_click=go_to_step, args=['stimulus'])
 
-# 階段 2: 實驗刺激
+# 階段 2: 實驗刺激 (模擬網頁)
 elif st.session_state['step'] == 'stimulus':
     st.write("### 請仔細閱讀下方的結帳頁面")
     st.caption("請想像您真的要購買此商品，觀察頁面上的資訊。")
@@ -74,7 +93,7 @@ elif st.session_state['step'] == 'stimulus':
     
     st.write("")
     st.write("")
-    # --- 核心改動 3: 使用 on_click ---
+    # 使用 callback 跳轉
     st.button("我已閱讀完畢，進入問卷", on_click=go_to_step, args=['survey'])
 
 # 階段 3: 問卷填答
@@ -94,10 +113,11 @@ elif st.session_state['step'] == 'survey':
         st.write("#### 4. 您最高願意支付多少錢購買此商品？")
         wtp_val = st.number_input("請輸入金額 (NT$)", min_value=0, step=10)
         
-        # 表單提交按鈕
+        # 表單送出按鈕
         submitted = st.form_submit_button("送出答案")
         
         if submitted:
+            # 記錄數據
             st.session_state['data'] = {
                 "Group_Security": st.session_state['security'],
                 "Group_Involvement": st.session_state['involvement'],
@@ -106,19 +126,19 @@ elif st.session_state['step'] == 'survey':
                 "Risk_Score": risk_q,
                 "WTP": wtp_val
             }
-            # 因為在 form 裡面不能直接用 on_click 跳轉，這裡用手動切換 + rerun
+            # 表單內不能直接用 on_click，所以這裡手動切換狀態並 rerun
             st.session_state['step'] = 'finish'
             st.rerun()
 
 # 階段 4: 結束
 elif st.session_state['step'] == 'finish':
     st.success("感謝您的填答！實驗結束。")
+    
     st.subheader("【Demo 模式：後台數據預覽】")
     st.json(st.session_state.get('data', {}))
     
-    # 重置按鈕
+    # 重置按鈕 (Demo 用)
     def reset_exp():
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-    
+        st.session_state.clear() # 清空所有狀態
+        
     st.button("重新開始 (測試用)", on_click=reset_exp)
