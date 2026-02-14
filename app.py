@@ -6,19 +6,17 @@ import os
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="CyberTech Store", layout="centered")
 
-# --- 2. CSS 科技感樣式 (保持不變) ---
+# --- 2. CSS 科技感樣式 ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap');
 
-    /* 全域背景 */
     .stApp {
         background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
         font-family: 'Inter', sans-serif;
         color: #e0e6ed;
     }
 
-    /* 品牌標題樣式 */
     .brand-text {
         font-family: 'Rajdhani', sans-serif;
         font-size: 1.8rem;
@@ -30,7 +28,6 @@ st.markdown("""
     }
     .brand-highlight { color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
     
-    /* 導航欄容器 */
     .nav-box {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -39,7 +36,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* 商品卡片 */
     .product-card {
         background: rgba(22, 27, 34, 0.8);
         border: 1px solid rgba(88, 166, 255, 0.2);
@@ -48,7 +44,6 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
 
-    /* 價格標籤 */
     .price-tag {
         font-family: 'Rajdhani', sans-serif;
         color: #00f2ff;
@@ -57,7 +52,6 @@ st.markdown("""
         margin: 10px 0;
     }
 
-    /* 按鈕樣式 */
     .stButton > button {
         background: linear-gradient(45deg, #FF5722, #F44336);
         color: white;
@@ -71,7 +65,6 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
     }
     
-    /* Internal 訊號框 */
     .internal-box {
         background: rgba(0, 230, 118, 0.1);
         border-left: 4px solid #00e676;
@@ -80,7 +73,6 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    /* External 證書框 */
     .cert-box {
         background: white;
         padding: 10px;
@@ -101,11 +93,11 @@ if 'step' not in st.session_state:
     st.session_state['involvement'] = random.choice(['High', 'Low'])
     st.session_state['step'] = 'consent'
     st.session_state['verified'] = False
+    st.session_state['submission_completed'] = False # 新增：防止表單狀態遺失
 
-# --- 4. 渲染元件 (修復 HTML 錯誤與中文化) ---
+# --- 4. 渲染元件 ---
 
 def render_navbar(security):
-    # 使用 container 包裹，避免使用複雜 HTML 字串
     with st.container():
         st.markdown('<div class="nav-box">', unsafe_allow_html=True)
         c1, c2 = st.columns([2, 1])
@@ -136,7 +128,6 @@ def render_security_signal(security):
             st.markdown("### 🛡️ 安全認證已啟用")
             st.caption("本網站通過 ISO 27001 與 TRUSTe 雙重稽核，確保您的資訊安全。")
             
-            # 驗證按鈕功能
             if not st.session_state['verified']:
                 if st.button("🔍 點此驗證證書有效性", key="btn_verify"):
                     with st.spinner("正在連線至 TRUSTe 資料庫驗證..."):
@@ -172,7 +163,6 @@ def render_product(involvement):
             st.warning(f"圖片遺失: {img}")
 
     with c2:
-        # 使用 markdown 渲染卡片內容
         st.markdown(f"""
         <div class="product-card">
             <h3 style="margin:0; color:white;">{title}</h3>
@@ -212,7 +202,7 @@ elif st.session_state['step'] == 'survey':
     st.title("📝 用戶感受調查")
     st.info("請根據剛剛瀏覽網頁的感受，回答以下問題：")
 
-    # [修復點] 表單邏輯修正：確保 key 唯一，且按鈕在表單內
+    # [關鍵修正] 使用 with st.form 只包含問卷輸入，提交後邏輯放外面
     with st.form("survey_form"):
         st.write("**1. 您願意支付多少金額購買此商品？ (WTP)**")
         wtp = st.number_input("金額 (NT$)", min_value=0, step=100, key="wtp_input")
@@ -223,20 +213,26 @@ elif st.session_state['step'] == 'survey':
         st.write("**3. 您認為該網站真心重視消費者的隱私嗎？(品牌真實性)**")
         auth = st.slider("1 (完全不重視) - 7 (非常重視)", 1, 7, 4, key="auth_score")
         
-        # 提交按鈕必須縮排在 with st.form 裡面
         submitted = st.form_submit_button("送出問卷")
         
         if submitted:
-            st.success("✅ 感謝您的填答！數據已記錄。")
-            st.write("---")
-            st.json({
+            # 這裡只做狀態標記，不放任何 UI 元件 (避免巢狀錯誤)
+            st.session_state['submission_completed'] = True
+            st.session_state['last_data'] = {
                 "組別 (訊號)": st.session_state['security'],
                 "組別 (產品)": st.session_state['involvement'],
                 "WTP": wtp,
                 "信任度": trust,
                 "真實性": auth
-            })
-            
-            if st.button("重置實驗 (下一位)"):
-                st.session_state.clear()
-                st.rerun()
+            }
+
+    # [關鍵修正] 將結果顯示與重置按鈕移到 form 之外
+    if st.session_state.get('submission_completed'):
+        st.success("✅ 感謝您的填答！數據已記錄。")
+        st.write("---")
+        st.json(st.session_state['last_data'])
+        
+        # 這裡的 button 在 form 之外，所以是合法的
+        if st.button("重置實驗 (下一位)", key="btn_reset"):
+            st.session_state.clear()
+            st.rerun()
