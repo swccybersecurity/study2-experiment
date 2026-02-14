@@ -2,122 +2,202 @@ import streamlit as st
 import random
 import time
 
-# --- 頁面設定 ---
+# --- 1. 頁面基本設定 (必須放第一行) ---
 st.set_page_config(page_title="購物體驗研究", layout="centered")
 
-# --- 核心函式：頁面跳轉 (Callback) ---
-# 這個函式會在按鈕按下的「瞬間」執行，確保狀態切換後才刷新頁面
+# --- 2. 進階美化技巧 (CSS Injection) ---
+#這段會把按鈕變色，圖片加陰影，讓整體質感提升
+st.markdown("""
+<style>
+    /* 讓主按鈕看起來像電商的 '立即結帳' (橘紅色系) */
+    .stButton > button {
+        background-color: #FF5722;
+        color: white;
+        font-weight: bold;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 24px;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        background-color: #E64A19;
+        color: white;
+        box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+    }
+    
+    /* 圖片美化：圓角 + 陰影 */
+    img {
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    
+    /* 價格文字特效 */
+    .price-tag {
+        color: #d32f2f;
+        font-size: 1.5em;
+        font-weight: bold;
+        font-family: 'Arial', sans-serif;
+    }
+    
+    /* 資安標章區塊特效 */
+    .security-badge {
+        background-color: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        border-radius: 8px;
+        padding: 10px;
+        color: #2e7d32;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 3. 核心邏輯：頁面跳轉 (Callback) ---
 def go_to_step(next_step):
     st.session_state['step'] = next_step
-    # 這裡不需要 st.rerun()，Streamlit 執行完 callback 會自動刷新
 
-# --- 1. 初始化 Session State (修正版) ---
-# 修正點：檢查 'step' 是否存在。如果存在，代表已經初始化過，就跳過這段。
+# --- 4. 初始化 Session State (防呆邏輯) ---
 if 'step' not in st.session_state:
     security_levels = ['Strong', 'Weak']
     involvement_levels = ['High', 'Low']
     
-    # 隨機分派組別
+    # 隨機分派
     st.session_state['security'] = random.choice(security_levels)
     st.session_state['involvement'] = random.choice(involvement_levels)
     
-    # 設定初始步驟與時間
+    # 初始狀態
     st.session_state['step'] = 'consent' 
     st.session_state['start_time'] = time.time()
 
-# --- 2. 輔助函數：模擬電商介面 ---
+# --- 5. 介面渲染函數：模擬電商頁面 (含真實圖片) ---
 def render_ecommerce_page(security, involvement):
     st.markdown("---")
     
-    # Header 區塊：資安訊號
-    col1, col2 = st.columns([3, 1])
+    # === Header 區塊 ===
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.subheader("🛒 SuperStore 結帳櫃檯")
+        st.subheader("🛒 SuperStore 官方旗艦店")
     with col2:
+        # [操弄點 1] 強訊號組顯示 ISO 標章與鎖頭
         if security == 'Strong':
             st.markdown(
-                """<div style="text-align: right; color: green; font-size: 0.8em;">
-                🔒 <b>SSL 加密連線</b><br>
-                ✅ <b>ISO 27001 認證</b>
-                </div>""", 
+                """
+                <div class="security-badge" style="display: flex; align-items: center; justify-content: center;">
+                    <div style="text-align: right; margin-right: 10px; line-height: 1.2;">
+                        <span style="font-weight: bold; font-size: 0.9em;">SSL 安全加密</span><br>
+                        <span style="font-size: 0.8em;">ISO 27001 認證</span>
+                    </div>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Padlock-green.svg/100px-Padlock-green.svg.png" width="35" style="box-shadow:none; border-radius:0;">
+                </div>
+                """, 
                 unsafe_allow_html=True
+            )
+        else:
+            # 弱訊號組：只顯示一般客服資訊，不提資安
+            st.markdown(
+                """
+                <div style="text-align: right; color: #666; font-size: 0.8em; padding: 10px;">
+                    客服專線：0800-000-123<br>
+                    營業時間：09:00-18:00
+                </div>
+                """, unsafe_allow_html=True
             )
 
     st.markdown("---")
     
-    # Product 區塊：產品呈現
-    prod_col1, prod_col2 = st.columns([1, 2])
+    # === Product 區塊 ===
+    prod_col1, prod_col2 = st.columns([1, 1.5], gap="large")
     
     with prod_col1:
+        # [操弄點 2] 根據涉入度顯示不同圖片 (Unsplash 真實圖庫)
         if involvement == 'High':
-            st.image("https://placehold.co/300x300/EEE/31343C?text=Laptop", caption="高階商務筆電")
+            # 筆電圖片
+            img_url = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80"
+            product_name = "ProBook X1 - 商務旗艦筆電"
+            desc = "搭載最新 AI 處理器 / 32GB RAM / 1TB SSD / 24小時續航"
             price = "NT$ 45,900"
-            product_name = "ProBook X1 - 極致效能版"
         else:
-            st.image("https://placehold.co/300x300/EEE/31343C?text=Pen", caption="精美文具組")
-            price = "NT$ 150"
+            # 文具圖片
+            img_url = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=800&q=80"
             product_name = "極簡風格原子筆組 (3入)"
+            desc = "滑順好寫 / 速乾墨水 / 經典黑藍紅三色 / 學生辦公首選"
+            price = "NT$ 150"
+            
+        st.image(img_url, use_container_width=True)
 
     with prod_col2:
-        st.write(f"### {product_name}")
-        st.write(f"**價格：{price}**")
-        st.write("運費：免運費")
-        st.text_input("信用卡號碼", placeholder="**** **** **** 1234", disabled=True)
-        st.text_input("收件地址", placeholder="請輸入您的地址...", disabled=True)
+        st.markdown(f"### {product_name}")
+        st.caption(desc)
+        st.markdown(f"<div class='price-tag'>{price}</div>", unsafe_allow_html=True)
         
-        # 強訊號組的額外承諾
+        st.write("---")
+        
+        # 模擬結帳欄位
+        st.text_input("💳 信用卡號碼", placeholder="**** **** **** 1234", disabled=True)
+        col_exp, col_cvc = st.columns(2)
+        with col_exp:
+            st.text_input("有效期限", placeholder="MM/YY", disabled=True)
+        with col_cvc:
+            st.text_input("CVC", placeholder="123", disabled=True)
+            
+        st.text_input("📍 收件地址", placeholder="請輸入您的收件地址...", disabled=True)
+        
+        # [操弄點 3] 強訊號組的額外承諾
         if security == 'Strong':
-            st.info("🛡️ **安心保證**：本站若發生個資外洩，承諾提供全額賠償。")
+            st.success("🛡️ **資安承諾**：本站採用金融級加密技術，若發生個資外洩，我們承諾提供**全額賠償**。")
         
         st.button("確認結帳 (模擬按鈕)", disabled=True)
     
     st.markdown("---")
 
-# --- 3. 主程式流程控制 ---
+# --- 6. 主程式流程控制 ---
 
 # 階段 1: 知情同意
 if st.session_state['step'] == 'consent':
-    st.title("消費者購物體驗研究")
-    st.write("您好，感謝您參與本研究。本研究旨在了解消費者的網購體驗。")
-    st.write("請想像您正在瀏覽接下來的購物網站，並準備進行結帳。")
+    st.title("🛒 消費者購物體驗研究")
+    st.info("👋 歡迎參與本研究！")
+    st.write("""
+    本研究旨在了解消費者的網購決策過程。
+    在下一頁中，您將看到一個**模擬的購物網站頁面**。
     
-    # 使用 callback 跳轉，避免卡住
-    st.button("我同意參與並開始", on_click=go_to_step, args=['stimulus'])
+    請您想像自己**正準備購買該商品**，並仔細閱讀頁面上的資訊。
+    """)
+    
+    st.write("")
+    st.button("我已了解，開始實驗 👉", on_click=go_to_step, args=['stimulus'])
 
-# 階段 2: 實驗刺激 (模擬網頁)
+# 階段 2: 實驗刺激
 elif st.session_state['step'] == 'stimulus':
-    st.write("### 請仔細閱讀下方的結帳頁面")
-    st.caption("請想像您真的要購買此商品，觀察頁面上的資訊。")
+    st.write("### 請瀏覽下方的商品頁面")
     
     render_ecommerce_page(st.session_state['security'], st.session_state['involvement'])
     
-    st.write("")
-    st.write("")
-    # 使用 callback 跳轉
-    st.button("我已閱讀完畢，進入問卷", on_click=go_to_step, args=['survey'])
+    st.warning("⚠️ 請確認您已仔細閱讀頁面資訊（包含商品、價格、版面標示等）")
+    st.button("我已閱讀完畢，填寫問卷 👉", on_click=go_to_step, args=['survey'])
 
 # 階段 3: 問卷填答
 elif st.session_state['step'] == 'survey':
-    st.title("填答反應")
+    st.title("📝 填答反應")
+    st.write("請根據剛剛看到的網頁，回答以下問題：")
     
     with st.form("survey_form"):
-        st.write("#### 1. 您認為該網站是否重視資訊安全？")
-        check_q = st.slider("1 (非常不重視) - 7 (非常重視)", 1, 7, 4)
+        st.write("#### 1. 操弄檢核")
+        st.write("您覺得剛剛的網站是否強調「資訊安全」？")
+        check_q = st.slider("1 (完全不強調) - 7 (非常強調)", 1, 7, 4)
         
-        st.write("#### 2. 您對該網站的信任程度？")
+        st.write("#### 2. 網站信任度")
+        st.write("您對該網站的信任程度？")
         trust_q = st.slider("1 (非常不信任) - 7 (非常信任)", 1, 7, 4)
         
-        st.write("#### 3. 您認為在此網站交易的風險高嗎？")
+        st.write("#### 3. 風險感知")
+        st.write("您認為在此網站輸入信用卡號的風險高嗎？")
         risk_q = st.slider("1 (風險極低) - 7 (風險極高)", 1, 7, 4)
         
-        st.write("#### 4. 您最高願意支付多少錢購買此商品？")
-        wtp_val = st.number_input("請輸入金額 (NT$)", min_value=0, step=10)
+        st.write("#### 4. 購買意願 (WTP)")
+        st.write("您最高願意支付多少錢購買此商品？ (請輸入數字)")
+        wtp_val = st.number_input("金額 (NT$)", min_value=0, step=10)
         
-        # 表單送出按鈕
         submitted = st.form_submit_button("送出答案")
         
         if submitted:
-            # 記錄數據
             st.session_state['data'] = {
                 "Group_Security": st.session_state['security'],
                 "Group_Involvement": st.session_state['involvement'],
@@ -126,19 +206,20 @@ elif st.session_state['step'] == 'survey':
                 "Risk_Score": risk_q,
                 "WTP": wtp_val
             }
-            # 表單內不能直接用 on_click，所以這裡手動切換狀態並 rerun
             st.session_state['step'] = 'finish'
             st.rerun()
 
 # 階段 4: 結束
 elif st.session_state['step'] == 'finish':
-    st.success("感謝您的填答！實驗結束。")
+    st.balloons() # 撒花特效 🎉
+    st.success("✅ 感謝您的填答！實驗結束。")
     
-    st.subheader("【Demo 模式：後台數據預覽】")
-    st.json(st.session_state.get('data', {}))
+    st.markdown("### 【Demo 模式：後台數據】")
+    st.code(st.session_state.get('data', {}), language='json')
     
-    # 重置按鈕 (Demo 用)
+    st.info(f"當前受試者組別：{st.session_state['security']} Signal / {st.session_state['involvement']} Involvement")
+    
     def reset_exp():
-        st.session_state.clear() # 清空所有狀態
+        st.session_state.clear()
         
-    st.button("重新開始 (測試用)", on_click=reset_exp)
+    st.button("🔄 重新開始 (測試下一組)", on_click=reset_exp)
