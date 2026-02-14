@@ -1,12 +1,12 @@
 import streamlit as st
 import random
 import time
+import os
 
 # --- 1. 頁面基本設定 (必須放第一行) ---
 st.set_page_config(page_title="購物體驗研究", layout="centered")
 
 # --- 2. 進階美化技巧 (CSS Injection) ---
-#這段會把按鈕變色，圖片加陰影，讓整體質感提升
 st.markdown("""
 <style>
     /* 讓主按鈕看起來像電商的 '立即結帳' (橘紅色系) */
@@ -44,7 +44,7 @@ st.markdown("""
         background-color: #e8f5e9;
         border: 1px solid #c8e6c9;
         border-radius: 8px;
-        padding: 10px;
+        padding: 8px 12px;
         color: #2e7d32;
     }
 </style>
@@ -67,7 +67,7 @@ if 'step' not in st.session_state:
     st.session_state['step'] = 'consent' 
     st.session_state['start_time'] = time.time()
 
-# --- 5. 介面渲染函數：模擬電商頁面 (含真實圖片) ---
+# --- 5. 介面渲染函數：模擬電商頁面 (讀取 GitHub 本地圖片版) ---
 def render_ecommerce_page(security, involvement):
     st.markdown("---")
     
@@ -78,6 +78,7 @@ def render_ecommerce_page(security, involvement):
     with col2:
         # [操弄點 1] 強訊號組顯示 ISO 標章與鎖頭
         if security == 'Strong':
+            # 使用 Emoji 🔒，解決外部圖片破圖問題
             st.markdown(
                 """
                 <div class="security-badge" style="display: flex; align-items: center; justify-content: center;">
@@ -85,13 +86,13 @@ def render_ecommerce_page(security, involvement):
                         <span style="font-weight: bold; font-size: 0.9em;">SSL 安全加密</span><br>
                         <span style="font-size: 0.8em;">ISO 27001 認證</span>
                     </div>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Padlock-green.svg/100px-Padlock-green.svg.png" width="35" style="box-shadow:none; border-radius:0;">
+                    <div style="font-size: 2.5rem; line-height: 1; margin-left: 5px;">🔒</div>
                 </div>
                 """, 
                 unsafe_allow_html=True
             )
         else:
-            # 弱訊號組：只顯示一般客服資訊，不提資安
+            # 弱訊號組：只顯示一般客服資訊
             st.markdown(
                 """
                 <div style="text-align: right; color: #666; font-size: 0.8em; padding: 10px;">
@@ -107,21 +108,27 @@ def render_ecommerce_page(security, involvement):
     prod_col1, prod_col2 = st.columns([1, 1.5], gap="large")
     
     with prod_col1:
-        # [操弄點 2] 根據涉入度顯示不同圖片 (Unsplash 真實圖庫)
+        # [操弄點 2] 根據涉入度顯示不同圖片 (直接讀取 GitHub 上的檔案)
         if involvement == 'High':
-            # 筆電圖片
-            img_url = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80"
+            # 筆電圖片 (注意：檔名大小寫必須與 GitHub 上完全一致)
+            img_path = "Lp.AVIF"  
             product_name = "ProBook X1 - 商務旗艦筆電"
             desc = "搭載最新 AI 處理器 / 32GB RAM / 1TB SSD / 24小時續航"
             price = "NT$ 45,900"
         else:
-            # 文具圖片
-            img_url = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=800&q=80"
+            # 文具圖片 (注意：檔名大小寫必須與 GitHub 上完全一致)
+            img_path = "Pen.jpg"
             product_name = "極簡風格原子筆組 (3入)"
             desc = "滑順好寫 / 速乾墨水 / 經典黑藍紅三色 / 學生辦公首選"
             price = "NT$ 150"
-            
-        st.image(img_url, use_container_width=True)
+        
+        # 檢查檔案是否存在 (防呆機制)
+        if os.path.exists(img_path):
+            st.image(img_path, use_container_width=True)
+        else:
+            # 如果讀不到檔案，顯示錯誤訊息 (方便除錯)
+            st.error(f"找不到圖片: {img_path}")
+            st.caption("請確認 GitHub 上的檔名大小寫是否完全一致，且檔案位於根目錄。")
 
     with prod_col2:
         st.markdown(f"### {product_name}")
