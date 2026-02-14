@@ -5,7 +5,7 @@ import os
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="CyberTech Store", layout="centered")
 
-# --- 2. CSS 魔改 (修正縮排問題) ---
+# --- 2. CSS 美化 (保持不變，這部分是正常的) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -101,39 +101,27 @@ if 'step' not in st.session_state:
     st.session_state['involvement'] = random.choice(['High', 'Low'])
     st.session_state['step'] = 'consent'
 
-# --- 4. 渲染邏輯 (這裡修復了 Bug) ---
+# --- 4. 渲染邏輯 (Bug 修復區：改用單行字串拼接) ---
 def render_ecommerce_page(security, involvement):
     
-    # 準備 Header 的內容 (避免使用縮排)
+    # 準備 Navbar 右側內容
+    # 注意：這裡我將 HTML 壓縮成一行，避免任何縮排問題
     if security == 'Internal':
-        right_content = """
-<div style="text-align:right; font-size:0.8rem; color:#8b949e;">
-    <span style="color:#2ea043;">✔ 官方認證商城</span><br>
-    隱私權保護政策
-</div>
-"""
+        right_content = '<div style="text-align:right; font-size:0.8rem; color:#8b949e;"><span style="color:#2ea043;">✔ 官方認證商城</span><br>隱私權保護政策</div>'
     else:
-        right_content = "" # External 組不顯示文字，改由下方顯示圖片
+        right_content = "" # External 組不顯示文字
 
-    # 組合 Navbar HTML (全部靠左對齊，防止被當成 code block)
-    navbar_html = f"""
-<div class="navbar">
-    <div class="brand-name">Cyber<span class="brand-highlight">Store</span></div>
-    <div style="display:flex; align-items:center;">
-        {right_content}
-        <div style="margin-left:20px; font-size:1.2rem;">🛒</div>
-    </div>
-</div>
-"""
+    # 組合 Navbar HTML (全部壓縮為一行)
+    navbar_html = f'<div class="navbar"><div class="brand-name">Cyber<span class="brand-highlight">Store</span></div><div style="display:flex; align-items:center;">{right_content}<div style="margin-left:20px; font-size:1.2rem;">🛒</div></div></div>'
+    
     st.markdown(navbar_html, unsafe_allow_html=True)
 
     # === External 圖片的特殊處理 ===
     if security == 'External':
-        # 用 columns 讓圖片不會滿版，並靠右一點
         col_space, col_badge = st.columns([3, 1.2])
         with col_badge:
             if os.path.exists("cert_badges.PNG"):
-                # 用 HTML 包裹圖片會比較難處理路徑，這裡改回用 Streamlit 原生 image 但加上容器
+                # 同樣壓縮 HTML
                 st.markdown('<div class="cert-badge-wrapper">', unsafe_allow_html=True)
                 st.image("cert_badges.PNG", width=130)
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -142,16 +130,9 @@ def render_ecommerce_page(security, involvement):
 
     # === Internal 訊號的特殊處理 ===
     if security == 'Internal':
-        # 這裡也要靠左對齊
-        st.markdown("""
-<div class="internal-signal-modern">
-    <div style="font-size: 2rem; margin-right: 15px;">🛡️</div>
-    <div>
-        <h4 style="margin:0; color:#2ea043; font-size:1rem;">官方資安承諾 (Official Guarantee)</h4>
-        <p style="margin:0; color:#b0b8c4; font-size:0.8rem;">本站採用端對端加密技術，確保您的交易與個資絕對安全。</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+        # 壓縮 HTML
+        internal_signal_html = '<div class="internal-signal-modern"><div style="font-size: 2rem; margin-right: 15px;">🛡️</div><div><h4 style="margin:0; color:#2ea043; font-size:1rem;">官方資安承諾 (Official Guarantee)</h4><p style="margin:0; color:#b0b8c4; font-size:0.8rem;">本站採用端對端加密技術，確保您的交易與個資絕對安全。</p></div></div>'
+        st.markdown(internal_signal_html, unsafe_allow_html=True)
 
     # === 商品展示區 ===
     c1, c2 = st.columns([1.2, 1])
@@ -174,21 +155,9 @@ def render_ecommerce_page(security, involvement):
             st.warning(f"圖片讀取失敗: {img_file}")
 
     with c2:
-        # 商品卡片 HTML 也全部靠左
-        card_html = f"""
-<div class="product-card">
-    <h2 style="margin-top:0; color:white;">{title}</h2>
-    <p style="color:#8b949e; font-size:0.9rem; line-height:1.5;">{desc}</p>
-    <div class="price-tag">{price}</div>
-    <hr style="border-color:#30363d; margin: 20px 0;">
-    <div style="margin-bottom:15px;">
-        <label style="color:#8b949e; font-size:0.8rem;">配送地址</label>
-        <div style="background:#0d1117; padding:10px; border-radius:8px; color:white; border:1px solid #30363d;">
-            台北市大安區...
-        </div>
-    </div>
-</div>
-"""
+        # 商品卡片 HTML 也全部壓縮為一行
+        card_html = f'<div class="product-card"><h2 style="margin-top:0; color:white;">{title}</h2><p style="color:#8b949e; font-size:0.9rem; line-height:1.5;">{desc}</p><div class="price-tag">{price}</div><hr style="border-color:#30363d; margin: 20px 0;"><div style="margin-bottom:15px;"><label style="color:#8b949e; font-size:0.8rem;">配送地址</label><div style="background:#0d1117; padding:10px; border-radius:8px; color:white; border:1px solid #30363d;">台北市大安區...</div></div></div>'
+        
         st.markdown(card_html, unsafe_allow_html=True)
         
         st.write("") 
