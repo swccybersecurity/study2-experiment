@@ -6,33 +6,19 @@ import os
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="CyberTech Store", layout="centered")
 
-# --- 2. CSS 科技感魔改 (Cyberpunk/Glassmorphism) ---
+# --- 2. CSS 科技感樣式 (保持不變) ---
 st.markdown("""
 <style>
-    /* 引入 Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap');
 
-    /* 全域背景：深色科技藍 */
+    /* 全域背景 */
     .stApp {
         background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
         font-family: 'Inter', sans-serif;
         color: #e0e6ed;
     }
 
-    /* 頂部導航欄 */
-    .nav-container {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 15px;
-        padding: 15px 25px;
-        margin-bottom: 25px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    }
-    
+    /* 品牌標題樣式 */
     .brand-text {
         font-family: 'Rajdhani', sans-serif;
         font-size: 1.8rem;
@@ -40,102 +26,73 @@ st.markdown("""
         color: #fff;
         text-transform: uppercase;
         letter-spacing: 2px;
+        margin-bottom: 0;
     }
     .brand-highlight { color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
+    
+    /* 導航欄容器 */
+    .nav-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 
-    /* 商品卡片：毛玻璃特效 */
+    /* 商品卡片 */
     .product-card {
         background: rgba(22, 27, 34, 0.8);
         border: 1px solid rgba(88, 166, 255, 0.2);
         border-radius: 20px;
-        padding: 30px;
+        padding: 20px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        position: relative;
-        overflow: hidden;
-    }
-    /* 卡片頂部裝飾條 */
-    .product-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 4px;
-        background: linear-gradient(90deg, #00f2ff, #0066ff);
     }
 
     /* 價格標籤 */
     .price-tag {
         font-family: 'Rajdhani', sans-serif;
         color: #00f2ff;
-        font-size: 2.2em;
+        font-size: 2.0em;
         font-weight: 700;
         margin: 10px 0;
-        text-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
     }
 
-    /* 結帳按鈕：霓虹按鈕 */
+    /* 按鈕樣式 */
     .stButton > button {
         background: linear-gradient(45deg, #FF5722, #F44336);
         color: white;
         border: none;
         border-radius: 5px;
-        padding: 12px 0;
         font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+        width: 100%;
     }
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(244, 67, 54, 0.6);
-    }
-
-    /* --- 資安訊號樣式 --- */
-
-    /* 1. External (外部): 證書容器 */
-    .cert-container {
-        background: white; /* 配合你的白底圖片 */
-        padding: 10px;
-        border-radius: 12px;
-        display: inline-block;
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-        text-align: center;
-        border: 2px solid #00f2ff; /* 科技藍邊框 */
-    }
-    .verified-badge {
-        color: #00c853;
-        font-weight: bold;
-        font-size: 0.8rem;
-        margin-top: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
     }
     
-    /* 2. Internal (內部): 系統訊息框 */
-    .internal-signal-box {
-        background: rgba(0, 230, 118, 0.05);
+    /* Internal 訊號框 */
+    .internal-box {
+        background: rgba(0, 230, 118, 0.1);
         border-left: 4px solid #00e676;
         padding: 15px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 20px;
+        border-radius: 4px;
+        margin-bottom: 15px;
     }
-    .internal-title {
-        color: #00e676;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    
+    /* External 證書框 */
+    .cert-box {
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        display: inline-block;
+        border: 2px solid #00f2ff;
+        text-align: center;
     }
-    .internal-text {
-        color: #b0bec5;
-        font-size: 0.85rem;
-        margin-top: 4px;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 狀態與邏輯 ---
+# --- 3. 狀態管理 ---
 def go_to_step(next_step):
     st.session_state['step'] = next_step
 
@@ -143,141 +100,143 @@ if 'step' not in st.session_state:
     st.session_state['security'] = random.choice(['External', 'Internal'])
     st.session_state['involvement'] = random.choice(['High', 'Low'])
     st.session_state['step'] = 'consent'
-    st.session_state['verified'] = False # 用來控制驗證按鈕的狀態
+    st.session_state['verified'] = False
 
-# --- 4. 渲染元件 (使用 Streamlit 原生元件以避免 Bug) ---
+# --- 4. 渲染元件 (修復 HTML 錯誤與中文化) ---
 
-def render_navbar():
-    # 使用 columns 取代 HTML 排版，絕對安全
-    c1, c2, c3 = st.columns([2, 1, 0.5])
-    with c1:
-        st.markdown('<div class="brand-text">CYBER<span class="brand-highlight">STORE</span></div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown("🛒 <span style='color:#00f2ff'>0</span>", unsafe_allow_html=True)
-    st.markdown("---")
+def render_navbar(security):
+    # 使用 container 包裹，避免使用複雜 HTML 字串
+    with st.container():
+        st.markdown('<div class="nav-box">', unsafe_allow_html=True)
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            st.markdown('<div class="brand-text">CYBER<span class="brand-highlight">STORE</span></div>', unsafe_allow_html=True)
+        with c2:
+            if security == 'Internal':
+                st.markdown("""
+                <div style="text-align:right; font-size:0.8rem; color:#b0bec5;">
+                    <span style="color:#00e676;">✔ 官方認證商城</span><br>隱私權保護政策
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="text-align:right; font-size:1.2rem;">🛒 <span style="color:#00f2ff">0</span></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def render_security_signal(security):
     if security == 'External':
-        # === 外部訊號：包含圖片與驗證功能 ===
-        col_img, col_info = st.columns([1, 2])
-        
-        with col_img:
+        c1, c2 = st.columns([1, 2])
+        with c1:
             if os.path.exists("cert_badges.PNG"):
-                # 用 div 包住圖片製造白底卡片效果
-                st.markdown('<div class="cert-container">', unsafe_allow_html=True)
-                st.image("cert_badges.PNG", width=110)
+                st.markdown('<div class="cert-box">', unsafe_allow_html=True)
+                st.image("cert_badges.PNG", width=120)
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.error("Img Missing")
-
-        with col_info:
+                st.error("圖片缺失: cert_badges.PNG")
+        with c2:
             st.markdown("### 🛡️ 安全認證已啟用")
-            st.caption("本網站通過 ISO 27001 與 TRUSTe 雙重稽核。")
+            st.caption("本網站通過 ISO 27001 與 TRUSTe 雙重稽核，確保您的資訊安全。")
             
-            # === [新功能] 點擊驗證 ===
+            # 驗證按鈕功能
             if not st.session_state['verified']:
-                if st.button("🔍 點此驗證證書有效性", key="verify_btn"):
+                if st.button("🔍 點此驗證證書有效性", key="btn_verify"):
                     with st.spinner("正在連線至 TRUSTe 資料庫驗證..."):
-                        time.sleep(1.5) # 模擬延遲
+                        time.sleep(1.2)
                     st.session_state['verified'] = True
                     st.rerun()
             else:
-                # 驗證成功後的狀態
                 st.success("✅ 驗證通過：證書有效且受保護")
-                st.markdown("<small style='color:#00c853'>Last checked: Just now</small>", unsafe_allow_html=True)
 
     elif security == 'Internal':
-        # === 內部訊號：科技感系統通知 ===
         st.markdown("""
-        <div class="internal-signal-box">
-            <div class="internal-title">🛡️ OFFICIAL GUARANTEE</div>
-            <div class="internal-text">
-                本站採用端對端加密技術 (E2EE)。<br>
-                我們承諾您的數據僅用於交易，絕不外洩。
-            </div>
+        <div class="internal-box">
+            <h4 style="margin:0; color:#00e676;">🛡️ 官方資安承諾 (Official Guarantee)</h4>
+            <p style="margin:5px 0 0 0; color:#cfd8dc; font-size:0.9rem;">
+                本站採用端對端加密技術 (E2EE)。<br>我們承諾您的數據僅用於交易，絕不外洩。
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
-def render_product_area(involvement):
+def render_product(involvement):
     c1, c2 = st.columns([1.2, 1])
-    
     with c1:
         if involvement == 'High':
             img, title, price = "Lp.AVIF", "ProBook X1 Ultimate", "NT$ 45,900"
-            desc = "Titanium Chassis / Neural Engine / Military Grade Security"
+            desc = "專為極致效能打造。搭載最新 AI 神經運算引擎，鈦金屬機身，內建軍規級資安防護晶片。"
         else:
             img, title, price = "Pen.jpg", "Tactical Gel Pen", "NT$ 150"
-            desc = "Aerospace Aluminum / Quick-Dry Ink / Minimalist Design"
+            desc = "極簡工業設計。航空鋁合金材質，0.5mm 滑順筆觸，商務人士必備的書寫工具。"
         
         if os.path.exists(img):
             st.image(img, use_container_width=True)
         else:
-            st.warning("Product Image Missing")
+            st.warning(f"圖片遺失: {img}")
 
     with c2:
-        # 用 HTML 渲染卡片文字
+        # 使用 markdown 渲染卡片內容
         st.markdown(f"""
-        <div style="padding:10px;">
-            <h2 style="margin:0; color:white;">{title}</h2>
-            <p style="color:#8b949e; margin-top:10px;">{desc}</p>
+        <div class="product-card">
+            <h3 style="margin:0; color:white;">{title}</h3>
+            <p style="color:#8b949e; font-size:0.9rem; margin-top:10px;">{desc}</p>
             <div class="price-tag">{price}</div>
+            <hr style="border-color:rgba(255,255,255,0.1);">
+            <div style="font-size:0.8rem; color:#8b949e;">配送至：台北市...</div>
         </div>
         """, unsafe_allow_html=True)
         
         st.write("")
-        st.button("CHECKOUT ➔", disabled=True)
-        
-        # 額外的小字
-        st.markdown("""
-        <div style="margin-top:15px; font-size:0.8rem; color:#58a6ff; display:flex; align-items:center; gap:5px;">
-            <span>🔒</span> SSL Encrypted Transaction
-        </div>
-        """, unsafe_allow_html=True)
+        st.button("立即結帳 ➔", disabled=True, key="btn_checkout_fake")
+        st.caption("🔒 SSL 加密傳輸 | 官方原廠保固")
 
-# --- 5. 主流程 ---
+# --- 5. 主程式流程 ---
 
 if st.session_state['step'] == 'consent':
-    st.markdown("<br><h1 style='text-align:center;'>🚀 購物體驗研究</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#8b949e;'>請想像您正打算購買以下科技產品...</p>", unsafe_allow_html=True)
+    st.markdown("<br><h1 style='text-align:center;'>🚀 網購體驗研究</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#8b949e;'>請想像您正打算購買以下科技產品，並請您在瀏覽過程中留意網站資訊...</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        if st.button("進入商店 / Enter Store"):
+        if st.button("進入商店 (Enter Store)"):
             go_to_step('stimulus')
 
 elif st.session_state['step'] == 'stimulus':
-    # 1. 渲染導航
-    render_navbar()
-    
-    # 2. 渲染資安訊號 (若是 External，這裡會有互動按鈕)
+    render_navbar(st.session_state['security'])
     render_security_signal(st.session_state['security'])
-    
     st.markdown("---")
-    
-    # 3. 渲染商品
-    render_product_area(st.session_state['involvement'])
+    render_product(st.session_state['involvement'])
     
     st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("已完成瀏覽，填寫問卷 (Next Step)"):
+    if st.button("我已完成瀏覽，填寫問卷"):
         go_to_step('survey')
 
 elif st.session_state['step'] == 'survey':
-    st.title("📝 Data Collection")
-    
+    st.title("📝 用戶感受調查")
+    st.info("請根據剛剛瀏覽網頁的感受，回答以下問題：")
+
+    # [修復點] 表單邏輯修正：確保 key 唯一，且按鈕在表單內
     with st.form("survey_form"):
-        st.write("1. Willingness to Pay (WTP)?")
-        st.number_input("Amount (NT$)", step=100)
+        st.write("**1. 您願意支付多少金額購買此商品？ (WTP)**")
+        wtp = st.number_input("金額 (NT$)", min_value=0, step=100, key="wtp_input")
         
-        st.write("2. Perceived Security?")
-        st.slider("Score", 1, 7)
+        st.write("**2. 您認為此網站的資安防護可信嗎？**")
+        trust = st.slider("1 (非常不可信) - 7 (非常可信)", 1, 7, 4, key="trust_score")
         
-        st.write("3. Brand Authenticity?")
-        st.slider("Score", 1, 7)
+        st.write("**3. 您認為該網站真心重視消費者的隱私嗎？(品牌真實性)**")
+        auth = st.slider("1 (完全不重視) - 7 (非常重視)", 1, 7, 4, key="auth_score")
         
-        if st.form_submit_button("Submit"):
-            st.success("Thank you! Data recorded.")
-            # 顯示組別供確認
-            st.code(f"Group: {st.session_state['security']} / {st.session_state['involvement']}")
-            if st.button("Reset"):
+        # 提交按鈕必須縮排在 with st.form 裡面
+        submitted = st.form_submit_button("送出問卷")
+        
+        if submitted:
+            st.success("✅ 感謝您的填答！數據已記錄。")
+            st.write("---")
+            st.json({
+                "組別 (訊號)": st.session_state['security'],
+                "組別 (產品)": st.session_state['involvement'],
+                "WTP": wtp,
+                "信任度": trust,
+                "真實性": auth
+            })
+            
+            if st.button("重置實驗 (下一位)"):
                 st.session_state.clear()
                 st.rerun()
