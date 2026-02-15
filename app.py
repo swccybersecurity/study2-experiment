@@ -11,12 +11,14 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap');
 
+    /* 全局背景 */
     .stApp {
         background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
         font-family: 'Inter', sans-serif;
         color: #e0e6ed;
     }
 
+    /* 品牌 Logo 文字 */
     .brand-text {
         font-family: 'Rajdhani', sans-serif;
         font-size: 1.8rem;
@@ -28,6 +30,7 @@ st.markdown("""
     }
     .brand-highlight { color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
     
+    /* 導航欄容器 */
     .nav-box {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -36,6 +39,7 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
+    /* 產品卡片 */
     .product-card {
         background: rgba(22, 27, 34, 0.8);
         border: 1px solid rgba(88, 166, 255, 0.2);
@@ -44,6 +48,7 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
 
+    /* 價格標籤 */
     .price-tag {
         font-family: 'Rajdhani', sans-serif;
         color: #00f2ff;
@@ -52,19 +57,24 @@ st.markdown("""
         margin: 10px 0;
     }
 
-    .stButton > button {
-        background: linear-gradient(45deg, #FF5722, #F44336);
+    /* 支付按鈕特別樣式 */
+    .pay-btn-container button {
+        background: linear-gradient(45deg, #00c853, #64dd17) !important; /* 綠色系代表支付 */
         color: white;
         border: none;
         border-radius: 5px;
         font-weight: bold;
         width: 100%;
+        padding: 12px 0;
+        font-size: 1.1rem;
+        margin-top: 10px;
     }
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+    .pay-btn-container button:hover {
+        box-shadow: 0 0 15px rgba(100, 221, 23, 0.6);
+        transform: scale(1.02);
     }
     
+    /* 內部訊號框樣式 */
     .internal-box {
         background: rgba(0, 230, 118, 0.1);
         border-left: 4px solid #00e676;
@@ -73,6 +83,7 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
+    /* 外部認證徽章框 */
     .cert-box {
         background: white;
         padding: 10px;
@@ -80,6 +91,18 @@ st.markdown("""
         display: inline-block;
         border: 2px solid #00f2ff;
         text-align: center;
+    }
+
+    /* 模擬信用卡輸入框樣式 (唯讀) */
+    .fake-input {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        color: #8b949e;
+        padding: 8px;
+        border-radius: 5px;
+        width: 100%;
+        margin-bottom: 8px;
+        font-family: monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -93,7 +116,7 @@ if 'step' not in st.session_state:
     st.session_state['involvement'] = random.choice(['High', 'Low'])
     st.session_state['step'] = 'consent'
     st.session_state['verified'] = False
-    st.session_state['submission_completed'] = False # 新增：防止表單狀態遺失
+    st.session_state['submission_completed'] = False
 
 # --- 4. 渲染元件 ---
 
@@ -106,8 +129,8 @@ def render_navbar(security):
         with c2:
             if security == 'Internal':
                 st.markdown("""
-                <div style="text-align:right; font-size:0.8rem; color:#b0bec5;">
-                    <span style="color:#00e676;">✔ 官方認證商城</span><br>隱私權保護政策
+                <div style="text-align:right; font-size:0.8rem; color:#b0bec5; padding-top: 5px;">
+                    隱私權保護政策
                 </div>
                 """, unsafe_allow_html=True)
             else:
@@ -142,40 +165,55 @@ def render_security_signal(security):
         <div class="internal-box">
             <h4 style="margin:0; color:#00e676;">🛡️ 官方資安承諾 (Official Guarantee)</h4>
             <p style="margin:5px 0 0 0; color:#cfd8dc; font-size:0.9rem;">
-                本站採用端對端加密技術 (E2EE)。<br>我們承諾您的數據僅用於交易，絕不外洩。
+                我們承諾您的數據僅用於交易，絕不外洩。
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-def render_product(involvement):
+def render_product_checkout(involvement):
     c1, c2 = st.columns([1.2, 1])
+    
+    # 左側：產品圖
     with c1:
         if involvement == 'High':
-            img, title, price = "Lp.AVIF", "ProBook X1 Ultimate", "NT$ 45,900"
-            desc = "專為極致效能打造。搭載最新 AI 神經運算引擎，鈦金屬機身，內建軍規級資安防護晶片。"
+            img, title, price_str = "Lp.AVIF", "ProBook X1 Ultimate", "NT$ 45,900"
+            desc = "專為極致效能打造。搭載最新 AI 神經運算引擎，鈦金屬機身。"
         else:
-            img, title, price = "Pen.jpg", "Tactical Gel Pen", "NT$ 150"
-            desc = "極簡工業設計。航空鋁合金材質，0.5mm 滑順筆觸，商務人士必備的書寫工具。"
+            img, title, price_str = "Pen.jpg", "Tactical Gel Pen", "NT$ 150"
+            desc = "極簡工業設計。航空鋁合金材質，0.5mm 滑順筆觸。"
         
         if os.path.exists(img):
             st.image(img, use_container_width=True)
         else:
             st.warning(f"圖片遺失: {img}")
 
+    # 右側：產品資訊 + 模擬結帳區
     with c2:
         st.markdown(f"""
         <div class="product-card">
             <h3 style="margin:0; color:white;">{title}</h3>
-            <p style="color:#8b949e; font-size:0.9rem; margin-top:10px;">{desc}</p>
-            <div class="price-tag">{price}</div>
-            <hr style="border-color:rgba(255,255,255,0.1);">
-            <div style="font-size:0.8rem; color:#8b949e;">配送至：台北市...</div>
+            <p style="color:#8b949e; font-size:0.9rem; margin-top:5px;">{desc}</p>
+            <div class="price-tag">{price_str}</div>
+            <div style="font-size:0.8rem; color:#8b949e; margin-bottom:15px;">🛡️ 官方原廠保固</div>
+            
+            <hr style="border-color:rgba(255,255,255,0.1); margin: 15px 0;">
+            
+            <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
+                <div style="font-size:0.8rem; color:#fff; margin-bottom:5px;">💳 信用卡快速結帳 (Saved Card)</div>
+                <div class="fake-input">xxxx-xxxx-xxxx-8829</div>
+                <div style="display:flex; gap:10px;">
+                    <div class="fake-input" style="width:50%;">12/28</div>
+                    <div class="fake-input" style="width:50%;">***</div>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
-        st.write("")
-        st.button("立即結帳 ➔", disabled=True, key="btn_checkout_fake")
-        st.caption("🔒 SSL 加密傳輸 | 官方原廠保固")
+        # 這裡的按鈕功能是「跳轉到問卷」，但文案是「確認支付」
+        st.markdown('<div class="pay-btn-container">', unsafe_allow_html=True)
+        if st.button(f"確認支付 {price_str}", key="btn_pay_trigger"):
+            go_to_step('survey')
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. 主程式流程 ---
 
@@ -192,19 +230,19 @@ elif st.session_state['step'] == 'stimulus':
     render_navbar(st.session_state['security'])
     render_security_signal(st.session_state['security'])
     st.markdown("---")
-    render_product(st.session_state['involvement'])
     
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("我已完成瀏覽，填寫問卷"):
-        go_to_step('survey')
+    # 呼叫新的結帳渲染函數
+    render_product_checkout(st.session_state['involvement'])
+    
+    # 移除舊的「完成瀏覽」按鈕，因為現在是透過「支付」來完成
 
 elif st.session_state['step'] == 'survey':
     st.title("📝 用戶感受調查")
     st.info("請根據剛剛瀏覽網頁的感受，回答以下問題：")
 
-    # [關鍵修正] 使用 with st.form 只包含問卷輸入，提交後邏輯放外面
     with st.form("survey_form"):
         st.write("**1. 您願意支付多少金額購買此商品？ (WTP)**")
+        st.caption("請填寫您內心認為合理的最高價格")
         wtp = st.number_input("金額 (NT$)", min_value=0, step=100, key="wtp_input")
         
         st.write("**2. 您認為此網站的資安防護可信嗎？**")
@@ -216,7 +254,6 @@ elif st.session_state['step'] == 'survey':
         submitted = st.form_submit_button("送出問卷")
         
         if submitted:
-            # 這裡只做狀態標記，不放任何 UI 元件 (避免巢狀錯誤)
             st.session_state['submission_completed'] = True
             st.session_state['last_data'] = {
                 "組別 (訊號)": st.session_state['security'],
@@ -226,13 +263,11 @@ elif st.session_state['step'] == 'survey':
                 "真實性": auth
             }
 
-    # [關鍵修正] 將結果顯示與重置按鈕移到 form 之外
     if st.session_state.get('submission_completed'):
         st.success("✅ 感謝您的填答！數據已記錄。")
         st.write("---")
         st.json(st.session_state['last_data'])
         
-        # 這裡的 button 在 form 之外，所以是合法的
         if st.button("重置實驗 (下一位)", key="btn_reset"):
             st.session_state.clear()
             st.rerun()
