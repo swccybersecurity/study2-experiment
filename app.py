@@ -59,7 +59,7 @@ st.markdown("""
 
     /* 支付按鈕特別樣式 */
     .pay-btn-container button {
-        background: linear-gradient(45deg, #00c853, #64dd17) !important; /* 綠色系代表支付 */
+        background: linear-gradient(45deg, #00c853, #64dd17) !important;
         color: white;
         border: none;
         border-radius: 5px;
@@ -103,6 +103,7 @@ st.markdown("""
         width: 100%;
         margin-bottom: 8px;
         font-family: monospace;
+        font-size: 0.9rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -189,27 +190,25 @@ def render_product_checkout(involvement):
 
     # 右側：產品資訊 + 模擬結帳區
     with c2:
+        # 重點修正：這裡的 HTML 字串取消了前面的縮排，確保靠左對齊
         st.markdown(f"""
-        <div class="product-card">
-            <h3 style="margin:0; color:white;">{title}</h3>
-            <p style="color:#8b949e; font-size:0.9rem; margin-top:5px;">{desc}</p>
-            <div class="price-tag">{price_str}</div>
-            <div style="font-size:0.8rem; color:#8b949e; margin-bottom:15px;">🛡️ 官方原廠保固</div>
-            
-            <hr style="border-color:rgba(255,255,255,0.1); margin: 15px 0;">
-            
-            <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
-                <div style="font-size:0.8rem; color:#fff; margin-bottom:5px;">💳 信用卡快速結帳 (Saved Card)</div>
-                <div class="fake-input">xxxx-xxxx-xxxx-8829</div>
-                <div style="display:flex; gap:10px;">
-                    <div class="fake-input" style="width:50%;">12/28</div>
-                    <div class="fake-input" style="width:50%;">***</div>
-                </div>
-            </div>
+<div class="product-card">
+    <h3 style="margin:0; color:white;">{title}</h3>
+    <p style="color:#8b949e; font-size:0.9rem; margin-top:5px;">{desc}</p>
+    <div class="price-tag">{price_str}</div>
+    <div style="font-size:0.8rem; color:#8b949e; margin-bottom:15px;">🛡️ 官方原廠保固</div>
+    <hr style="border-color:rgba(255,255,255,0.1); margin: 15px 0;">
+    <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
+        <div style="font-size:0.8rem; color:#fff; margin-bottom:5px;">💳 信用卡快速結帳 (Saved Card)</div>
+        <div class="fake-input">xxxx-xxxx-xxxx-8829</div>
+        <div style="display:flex; gap:10px;">
+            <div class="fake-input" style="width:50%;">12/28</div>
+            <div class="fake-input" style="width:50%;">***</div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+</div>
+""", unsafe_allow_html=True)
         
-        # 這裡的按鈕功能是「跳轉到問卷」，但文案是「確認支付」
         st.markdown('<div class="pay-btn-container">', unsafe_allow_html=True)
         if st.button(f"確認支付 {price_str}", key="btn_pay_trigger"):
             go_to_step('survey')
@@ -231,10 +230,7 @@ elif st.session_state['step'] == 'stimulus':
     render_security_signal(st.session_state['security'])
     st.markdown("---")
     
-    # 呼叫新的結帳渲染函數
     render_product_checkout(st.session_state['involvement'])
-    
-    # 移除舊的「完成瀏覽」按鈕，因為現在是透過「支付」來完成
 
 elif st.session_state['step'] == 'survey':
     st.title("📝 用戶感受調查")
