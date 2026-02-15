@@ -24,13 +24,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 狀態管理 (自動修復與初始化) ---
+# --- 3. 狀態管理 ---
 if 'privacy_risk' not in st.session_state:
     st.session_state.clear()
     st.session_state['security_level'] = random.choice(['High_Signal', 'Low_Signal'])
     st.session_state['privacy_risk'] = random.choice(['High_Risk', 'Low_Risk'])
     st.session_state['step'] = 'intro'
     st.session_state['verified'] = False
+    st.session_state['submitted'] = False # 新增：用來記住表單是否已提交
 
 def go_next(step_name):
     st.session_state['step'] = step_name
@@ -75,7 +76,7 @@ def render_product_page(risk_type, security_level):
 
     c_img, c_info = st.columns([1, 1.2])
     with c_img:
-        # 圖片防呆：若沒圖片會顯示文字
+        # 圖片防呆
         if os.path.exists(img_name):
             st.image(img_name, use_container_width=True)
         else:
@@ -99,9 +100,8 @@ def render_product_page(risk_type, security_level):
         st.markdown(f"## {prod_name}")
         st.markdown(f"<p style='color:#bbb;'>{prod_desc}</p>", unsafe_allow_html=True)
         
-        # --- 關鍵修正處：這裡改用 f'...' (外單引號) 避免與 class="..." (內雙引號) 衝突 ---
+        # 【修正點 1】這裡改用單引號包住 f-string，避免跟內部的 class="..." 衝突
         st.markdown(f'<div class="price-tag">NT$ {price}</div>', unsafe_allow_html=True)
-        # -------------------------------------------------------------------------
         
         st.write("🚚 免運費 | ⚡ 24h 到貨")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -113,6 +113,7 @@ def render_survey(risk_type, security_level):
     st.success("✅ 模擬購買結束！")
     base_price = 1500 if risk_type == 'High_Risk' else 500
     
+    # 這裡只負責收集數據
     with st.form("survey_form"):
         st.markdown("#### 💰 購買意願調查")
         st.write(f"1. 原價 (NT$ {base_price}) 購買機率？")
@@ -126,17 +127,27 @@ def render_survey(risk_type, security_level):
         risk = st.slider("4. 您覺得在此購買的**隱私風險**？ (1低-7高)", 1, 7, 4)
         auth = st.slider("5. 您覺得商家的**資安誠意**？ (1假-7真)", 1, 7, 4)
         
+        # 按下提交後，只更新狀態，不直接畫按鈕
         if st.form_submit_button("提交數據"):
-            # 顯示結果 JSON
-            st.json({
+            st.session_state['submitted'] = True
+            st.session_state['results'] = {
                 "Condition": risk_type, 
                 "Signal": security_level, 
                 "WTP_Slope": [p0, p10, p20], 
                 "Perceived_Risk": risk
-            })
-            if st.button("重置實驗"):
-                st.session_state.clear()
-                st.rerun()
+            }
+            st.rerun() # 強制刷新，讓下面的 if 區塊執行
+
+    # 【修正點 2】把結果顯示和重置按鈕移到 form 外面
+    if st.session_state.get('submitted'):
+        st.markdown("---")
+        st.success("✅ 數據已記錄！")
+        st.json(st.session_state['results'])
+        
+        # 這個按鈕現在在 form 外面，且依賴 session_state，所以不會消失或報錯
+        if st.button("重置實驗 (下一位)"):
+            st.session_state.clear()
+            st.rerun()
 
 # --- 5. 主程式 ---
 if st.session_state['step'] == 'intro':
