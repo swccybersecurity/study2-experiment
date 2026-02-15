@@ -111,6 +111,8 @@ st.markdown("""
 # --- 3. 狀態管理 ---
 def go_to_step(next_step):
     st.session_state['step'] = next_step
+    # 強制重跑腳本，解決按鈕需要按兩次的問題
+    st.rerun()
 
 if 'step' not in st.session_state:
     st.session_state['security'] = random.choice(['External', 'Internal'])
@@ -174,7 +176,6 @@ def render_security_signal(security):
 def render_product_checkout(involvement):
     c1, c2 = st.columns([1.2, 1])
     
-    # 左側：產品圖
     with c1:
         if involvement == 'High':
             img, title, price_str = "Lp.AVIF", "ProBook X1 Ultimate", "NT$ 45,900"
@@ -188,9 +189,8 @@ def render_product_checkout(involvement):
         else:
             st.warning(f"圖片遺失: {img}")
 
-    # 右側：產品資訊 + 模擬結帳區
     with c2:
-        # 重點修正：這裡的 HTML 字串取消了前面的縮排，確保靠左對齊
+        # 修復縮排問題，確保 HTML 正確渲染
         st.markdown(f"""
 <div class="product-card">
     <h3 style="margin:0; color:white;">{title}</h3>
@@ -210,7 +210,12 @@ def render_product_checkout(involvement):
 """, unsafe_allow_html=True)
         
         st.markdown('<div class="pay-btn-container">', unsafe_allow_html=True)
+        # 這裡增加了 spinner 效果，且呼叫 go_to_step 會觸發 rerun
         if st.button(f"確認支付 {price_str}", key="btn_pay_trigger"):
+            with st.spinner("🔒 正在加密傳輸交易資料..."):
+                time.sleep(1.5) # 模擬處理時間，增加真實感
+            st.toast("✅ 支付成功！") # 彈出小提示
+            time.sleep(1)
             go_to_step('survey')
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -233,8 +238,11 @@ elif st.session_state['step'] == 'stimulus':
     render_product_checkout(st.session_state['involvement'])
 
 elif st.session_state['step'] == 'survey':
-    st.title("📝 用戶感受調查")
-    st.info("請根據剛剛瀏覽網頁的感受，回答以下問題：")
+    # --- 這裡加入了過場告知 ---
+    st.success("✅ 模擬交易完成！(此為實驗測試，不會產生真實扣款)")
+    st.markdown("### 📝 體驗感受調查")
+    st.write("請跳脫剛才的購物情境，並以使用者的角度，誠實回答以下關於該網站的感受：")
+    st.markdown("---")
 
     with st.form("survey_form"):
         st.write("**1. 您願意支付多少金額購買此商品？ (WTP)**")
