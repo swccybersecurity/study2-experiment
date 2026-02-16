@@ -4,6 +4,9 @@ import time
 import os
 import csv
 from datetime import datetime
+from fpdf import FPDF
+import pandas as pd # 必須引用，用於顯示和下載數據
+import io
 
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="CyberSec Pricing Exp", layout="centered", page_icon="🛡️")
@@ -61,7 +64,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據儲存功能 (CSV) ---
+# --- 3. 數據儲存與 PDF 生成功能 ---
 CSV_FILE = 'experiment_data.csv'
 
 def save_to_csv(data):
@@ -71,6 +74,44 @@ def save_to_csv(data):
         if not file_exists:
             writer.writeheader()
         writer.writerow(data)
+
+def create_pdf_bytes(prod_name, signal_type):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    # 標題
+    pdf.set_font("Arial", 'B', size=24)
+    pdf.cell(200, 20, txt="CYBERSECURITY DOCUMENT", ln=True, align='C')
+    pdf.line(10, 30, 200, 30)
+    pdf.ln(20)
+    
+    # 內容
+    pdf.set_font("Arial", size=14)
+    pdf.cell(200, 10, txt=f"Product Name: {prod_name}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='L')
+    pdf.ln(10)
+    
+    if signal_type == 'High_Signal':
+        pdf.set_text_color(220, 150, 0) # 金色
+        pdf.set_font("Arial", 'B', size=18)
+        pdf.cell(200, 15, txt="CERTIFICATE OF COMPLIANCE", ln=True, align='C')
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=f"This is to certify that the product '{prod_name}' has successfully passed the Third-Party IoT Penetration Testing and meets the International Cybersecurity Standard (ISO/IEC 27402).\n\nCertification Level: GOLD\nTesting Lab: SecureLab Intl.")
+    else:
+        pdf.set_text_color(100, 100, 100) # 灰色
+        pdf.set_font("Arial", 'B', size=18)
+        pdf.cell(200, 15, txt="MANUFACTURER DECLARATION", ln=True, align='C')
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=f"We, the manufacturer, hereby declare that the product '{prod_name}' is designed with security features to protect user privacy. We are committed to providing regular firmware updates.\n\nType: Self-Assessment Declaration\nIssuer: Internal QA Team.")
+
+    pdf.ln(30)
+    pdf.set_font("Arial", 'I', size=10)
+    pdf.cell(200, 10, txt="(This is a simulated document for experiment purposes)", ln=True, align='C')
+
+    return pdf.output(dest='S').encode('latin-1')
 
 # --- 4. 狀態管理 ---
 if 'init' not in st.session_state:
@@ -131,34 +172,31 @@ def render_product_page(risk_type, security_level, base_price):
     with c2: st.caption("🛒 Guest_User_007")
     st.markdown("---")
 
-    # 產品內容設定 (加入圖片檔案)
+    # 產品內容設定
     if risk_type == 'High_Risk':
         prod_name = "SecureView 寶寶監視器 Pro"
         desc = "4K 高畫質 / AI 哭聲偵測 / 雙向語音"
-        img_file = "camera.jpg" # 您的圖片檔名
+        img_file = "camera.jpg"
     else:
         prod_name = "LumiSmart 智慧燈泡 Plus"
         desc = "1600萬色 / 音樂律動 / 語音助理支援"
-        img_file = "bulb.jpg"   # 您的圖片檔名
+        img_file = "bulb.jpg"
 
     c_img, c_info = st.columns([1, 1.2])
     
     with c_img:
-        # --- 顯示真實產品圖片 ---
+        # --- 顯示圖片 ---
         st.markdown('<div class="product-image-container">', unsafe_allow_html=True)
         try:
-            # 檢查圖片是否存在，避免報錯
             if os.path.exists(img_file):
                 st.image(img_file, use_column_width=True)
             else:
-                # 如果找不到圖片的備用方案
                 st.error(f"找不到圖片: {img_file}")
-                st.info("請確認圖片檔案已上傳至 GitHub 根目錄。")
+                st.caption("請確認 GitHub 上已上傳圖片")
         except Exception as e:
              st.error(f"圖片載入錯誤: {e}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        
         st.write("")
         # --- 關鍵變因：資安訊號 ---
         if security_level == 'High_Signal':
@@ -170,6 +208,17 @@ def render_product_page(risk_type, security_level, base_price):
                 <small style="color:#ddd;">通過第三方滲透測試<br>符合國際資安標準</small>
             </div>
             """, unsafe_allow_html=True)
+            
+            # PDF 下載按鈕 (金級證書)
+            pdf_bytes = create_pdf_bytes(prod_name, "High_Signal")
+            st.download_button(
+                label="📄 下載第三方資安證書 (PDF)",
+                data=pdf_bytes,
+                file_name=f"{prod_name}_Certificate.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            
         else:
             st.markdown("""
             <div class="internal-signal">
@@ -177,6 +226,16 @@ def render_product_page(risk_type, security_level, base_price):
                 <small>本產品由原廠工程團隊精心設計，致力於保護您的使用安全與隱私。</small>
             </div>
             """, unsafe_allow_html=True)
+            
+            # PDF 下載按鈕 (原廠聲明)
+            pdf_bytes = create_pdf_bytes(prod_name, "Low_Signal")
+            st.download_button(
+                label="📄 下載原廠安全聲明書 (PDF)",
+                data=pdf_bytes,
+                file_name=f"{prod_name}_Declaration.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
 
     with c_info:
         st.markdown(f"## {prod_name}")
@@ -247,13 +306,6 @@ def render_survey(risk_type, security_level, base_price):
         st.success("✅ 數據已成功儲存！感謝您的參與。")
         st.balloons()
         
-        # 顯示簡易統計 (給你看的，實際實驗時可以隱藏)
-        st.markdown("### 📊 目前數據預覽 (Debug Mode)")
-        if os.path.exists(CSV_FILE):
-            import pandas as pd
-            df = pd.read_csv(CSV_FILE)
-            st.dataframe(df.tail(3)) # 顯示最後3筆
-
         if st.button("重置實驗 (下一位受測者)"):
             st.session_state.clear()
             st.rerun()
@@ -282,3 +334,24 @@ elif st.session_state['step'] == 'survey':
     render_survey(st.session_state['privacy_risk'], 
                  st.session_state['security_level'], 
                  st.session_state['base_price'])
+
+# --- 7. (管理員用) 數據下載區 ---
+st.sidebar.markdown("---")
+st.sidebar.header("🔧 管理員專區")
+admin_password = st.sidebar.text_input("輸入管理密碼下載數據", type="password")
+
+if admin_password == "1234":  # 你的密碼
+    if os.path.exists(CSV_FILE):
+        # 讀取 CSV 並轉換為下載格式
+        df = pd.read_csv(CSV_FILE)
+        st.sidebar.write(f"目前已收集: {len(df)} 筆數據")
+        
+        csv_data = df.to_csv(index=False).encode('utf-8-sig')
+        st.sidebar.download_button(
+            label="📥 下載實驗數據 (CSV)",
+            data=csv_data,
+            file_name="experiment_results.csv",
+            mime="text/csv"
+        )
+    else:
+        st.sidebar.warning("目前尚無數據")
