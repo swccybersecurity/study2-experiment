@@ -5,31 +5,27 @@ import os
 import csv
 from datetime import datetime
 from fpdf import FPDF
-import pandas as pd # 必須引用，用於顯示和下載數據
+import pandas as pd
 import io
 
 # --- 1. 頁面基本設定 ---
 st.set_page_config(page_title="CyberSec Pricing Exp", layout="centered", page_icon="🛡️")
 
-# --- 2. CSS 樣式 (強化標章視覺) ---
+# --- 2. CSS 樣式 ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap');
     .stApp { background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%); font-family: 'Inter', sans-serif; color: #e0e6ed; }
     
-    /* 標題與價格 */
     .brand-text { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
     .price-tag { font-family: 'Rajdhani', sans-serif; color: #00f2ff; font-size: 2.5em; font-weight: 700; margin: 10px 0; }
     
-    /* 比較區塊 */
     .price-comparison { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border: 1px solid #444; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .math-highlight { color: #ff5252; font-weight: bold; font-size: 1.2em; background: rgba(255, 82, 82, 0.1); padding: 2px 8px; border-radius: 4px;}
     
-    /* 按鈕樣式 */
     .stButton>button { background: linear-gradient(90deg, #00c853, #64dd17); color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 12px; transition: all 0.3s; }
     .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(100, 255, 100, 0.4); }
     
-    /* High Signal: 權威認證標章樣式 */
     .trust-badge {
         border: 2px solid #ffd700;
         background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.8));
@@ -44,7 +40,6 @@ st.markdown("""
     .trust-badge::before { content: "★ ★ ★ ★ ★"; display: block; color: #ffd700; font-size: 0.8em; letter-spacing: 3px; margin-bottom: 5px; }
     .trust-title { color: #ffd700; font-weight: bold; font-size: 1.1em; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; }
     
-    /* Low Signal: 普通聲明樣式 */
     .internal-signal { 
         border-left: 4px solid #607d8b; 
         background: rgba(96, 125, 139, 0.1);
@@ -55,7 +50,6 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* 圖片容器優化 */
     .product-image-container img {
         border-radius: 12px;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -75,7 +69,8 @@ def save_to_csv(data):
             writer.writeheader()
         writer.writerow(data)
 
-def create_pdf_bytes(prod_name, signal_type):
+def create_pdf_bytes(prod_name_en, signal_type):
+    # 注意：這裡接收的是英文名稱 prod_name_en，避免 UnicodeEncodeError
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -88,7 +83,8 @@ def create_pdf_bytes(prod_name, signal_type):
     
     # 內容
     pdf.set_font("Arial", size=14)
-    pdf.cell(200, 10, txt=f"Product Name: {prod_name}", ln=True, align='L')
+    # 使用英文名稱寫入 PDF
+    pdf.cell(200, 10, txt=f"Product Name: {prod_name_en}", ln=True, align='L')
     pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='L')
     pdf.ln(10)
     
@@ -98,14 +94,14 @@ def create_pdf_bytes(prod_name, signal_type):
         pdf.cell(200, 15, txt="CERTIFICATE OF COMPLIANCE", ln=True, align='C')
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"This is to certify that the product '{prod_name}' has successfully passed the Third-Party IoT Penetration Testing and meets the International Cybersecurity Standard (ISO/IEC 27402).\n\nCertification Level: GOLD\nTesting Lab: SecureLab Intl.")
+        pdf.multi_cell(0, 10, txt=f"This is to certify that the product '{prod_name_en}' has successfully passed the Third-Party IoT Penetration Testing and meets the International Cybersecurity Standard (ISO/IEC 27402).\n\nCertification Level: GOLD\nTesting Lab: SecureLab Intl.")
     else:
         pdf.set_text_color(100, 100, 100) # 灰色
         pdf.set_font("Arial", 'B', size=18)
         pdf.cell(200, 15, txt="MANUFACTURER DECLARATION", ln=True, align='C')
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"We, the manufacturer, hereby declare that the product '{prod_name}' is designed with security features to protect user privacy. We are committed to providing regular firmware updates.\n\nType: Self-Assessment Declaration\nIssuer: Internal QA Team.")
+        pdf.multi_cell(0, 10, txt=f"We, the manufacturer, hereby declare that the product '{prod_name_en}' is designed with security features to protect user privacy. We are committed to providing regular firmware updates.\n\nType: Self-Assessment Declaration\nIssuer: Internal QA Team.")
 
     pdf.ln(30)
     pdf.set_font("Arial", 'I', size=10)
@@ -117,18 +113,16 @@ def create_pdf_bytes(prod_name, signal_type):
 if 'init' not in st.session_state:
     st.session_state.clear()
     st.session_state['init'] = True
-    # 實驗變因隨機化
-    st.session_state['security_level'] = random.choice(['High_Signal', 'Low_Signal']) # 標章 vs 聲明
-    st.session_state['privacy_risk'] = random.choice(['High_Risk', 'Low_Risk'])       # 監視器 vs 燈泡
+    st.session_state['security_level'] = random.choice(['High_Signal', 'Low_Signal'])
+    st.session_state['privacy_risk'] = random.choice(['High_Risk', 'Low_Risk'])
     
     st.session_state['step'] = 'intro'
     st.session_state['submitted'] = False
 
-    # 設定價格
     if st.session_state['privacy_risk'] == 'High_Risk':
-        st.session_state['base_price'] = 8000 # 寶寶監視器
+        st.session_state['base_price'] = 8000
     else:
-        st.session_state['base_price'] = 750  # 智慧燈泡
+        st.session_state['base_price'] = 750
 
 def go_next(step_name):
     st.session_state['step'] = step_name
@@ -164,7 +158,6 @@ def render_scenario_priming(risk_type):
         go_next('store')
 
 def render_product_page(risk_type, security_level, base_price):
-    # 設定顯示價格 (溢價 20%)
     display_price = int(base_price * 1.2)
     
     c1, c2 = st.columns([3, 1])
@@ -172,20 +165,21 @@ def render_product_page(risk_type, security_level, base_price):
     with c2: st.caption("🛒 Guest_User_007")
     st.markdown("---")
 
-    # 產品內容設定
+    # 產品內容設定 (區分 中文顯示名 與 英文PDF名)
     if risk_type == 'High_Risk':
         prod_name = "SecureView 寶寶監視器 Pro"
+        prod_name_en = "SecureView Baby Monitor Pro" # 英文版名稱 (避免PDF亂碼)
         desc = "4K 高畫質 / AI 哭聲偵測 / 雙向語音"
         img_file = "camera.jpg"
     else:
         prod_name = "LumiSmart 智慧燈泡 Plus"
+        prod_name_en = "LumiSmart Smart Bulb Plus"   # 英文版名稱 (避免PDF亂碼)
         desc = "1600萬色 / 音樂律動 / 語音助理支援"
         img_file = "bulb.jpg"
 
     c_img, c_info = st.columns([1, 1.2])
     
     with c_img:
-        # --- 顯示圖片 ---
         st.markdown('<div class="product-image-container">', unsafe_allow_html=True)
         try:
             if os.path.exists(img_file):
@@ -209,12 +203,12 @@ def render_product_page(risk_type, security_level, base_price):
             </div>
             """, unsafe_allow_html=True)
             
-            # PDF 下載按鈕 (金級證書)
-            pdf_bytes = create_pdf_bytes(prod_name, "High_Signal")
+            # 生成 PDF (傳入英文名稱)
+            pdf_bytes = create_pdf_bytes(prod_name_en, "High_Signal")
             st.download_button(
                 label="📄 下載第三方資安證書 (PDF)",
                 data=pdf_bytes,
-                file_name=f"{prod_name}_Certificate.pdf",
+                file_name=f"{prod_name_en}_Certificate.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
@@ -227,12 +221,12 @@ def render_product_page(risk_type, security_level, base_price):
             </div>
             """, unsafe_allow_html=True)
             
-            # PDF 下載按鈕 (原廠聲明)
-            pdf_bytes = create_pdf_bytes(prod_name, "Low_Signal")
+            # 生成 PDF (傳入英文名稱)
+            pdf_bytes = create_pdf_bytes(prod_name_en, "Low_Signal")
             st.download_button(
                 label="📄 下載原廠安全聲明書 (PDF)",
                 data=pdf_bytes,
-                file_name=f"{prod_name}_Declaration.pdf",
+                file_name=f"{prod_name_en}_Declaration.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
@@ -259,7 +253,6 @@ def render_survey(risk_type, security_level, base_price):
     st.info("系統提示：訂單已成立。請協助填寫以下滿意度調查，以完成交易。")
 
     with st.form("data_form"):
-        # --- 價格比較與合理性 (WTP Proxy) ---
         st.markdown(f"""
         <div class="price-comparison">
             <h4 style="margin-top:0;">💰 價格分析</h4>
@@ -286,11 +279,10 @@ def render_survey(risk_type, security_level, base_price):
         q4_trust = st.slider("信任程度 (1=完全不信, 7=非常信任)", 1, 7, 4)
 
         if st.form_submit_button("提交並結束實驗"):
-            # 準備數據
             record = {
                 "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Product_Type": risk_type,      # 高風險/低風險
-                "Signal_Type": security_level,  # 強訊號/弱訊號
+                "Product_Type": risk_type,
+                "Signal_Type": security_level,
                 "Base_Price": base_price,
                 "Diff_Price": diff_price,
                 "Q1_Reasonableness_20pct": q1_score,
@@ -340,9 +332,8 @@ st.sidebar.markdown("---")
 st.sidebar.header("🔧 管理員專區")
 admin_password = st.sidebar.text_input("輸入管理密碼下載數據", type="password")
 
-if admin_password == "1234":  # 你的密碼
+if admin_password == "1234":
     if os.path.exists(CSV_FILE):
-        # 讀取 CSV 並轉換為下載格式
         df = pd.read_csv(CSV_FILE)
         st.sidebar.write(f"目前已收集: {len(df)} 筆數據")
         
