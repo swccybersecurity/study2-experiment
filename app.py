@@ -36,6 +36,7 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
         position: relative;
         overflow: hidden;
+        margin-top: 20px;
     }
     .trust-badge::before { content: "★ ★ ★ ★ ★"; display: block; color: #ffd700; font-size: 0.8em; letter-spacing: 3px; margin-bottom: 5px; }
     .trust-title { color: #ffd700; font-weight: bold; font-size: 1.1em; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; }
@@ -48,6 +49,14 @@ st.markdown("""
         color: #b0bec5; 
         font-style: italic; 
         border-radius: 0 8px 8px 0;
+        margin-top: 20px;
+    }
+    
+    /* 圖片容器優化 */
+    .product-image-container img {
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -122,25 +131,33 @@ def render_product_page(risk_type, security_level, base_price):
     with c2: st.caption("🛒 Guest_User_007")
     st.markdown("---")
 
-    # 產品內容設定
+    # 產品內容設定 (加入圖片檔案)
     if risk_type == 'High_Risk':
         prod_name = "SecureView 寶寶監視器 Pro"
         desc = "4K 高畫質 / AI 哭聲偵測 / 雙向語音"
-        img_icon = "📹"
+        img_file = "camera.jpg" # 您的圖片檔名
     else:
         prod_name = "LumiSmart 智慧燈泡 Plus"
         desc = "1600萬色 / 音樂律動 / 語音助理支援"
-        img_icon = "💡"
+        img_file = "bulb.jpg"   # 您的圖片檔名
 
     c_img, c_info = st.columns([1, 1.2])
     
     with c_img:
-        # 模擬產品圖
-        st.markdown(f"""
-        <div style="height:200px; background:#222; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:80px;">
-            {img_icon}
-        </div>
-        """, unsafe_allow_html=True)
+        # --- 顯示真實產品圖片 ---
+        st.markdown('<div class="product-image-container">', unsafe_allow_html=True)
+        try:
+            # 檢查圖片是否存在，避免報錯
+            if os.path.exists(img_file):
+                st.image(img_file, use_column_width=True)
+            else:
+                # 如果找不到圖片的備用方案
+                st.error(f"找不到圖片: {img_file}")
+                st.info("請確認圖片檔案已上傳至 GitHub 根目錄。")
+        except Exception as e:
+             st.error(f"圖片載入錯誤: {e}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
         
         st.write("")
         # --- 關鍵變因：資安訊號 ---
