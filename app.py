@@ -1,348 +1,505 @@
-import streamlit as st
-import random
-import time
 import os
 import csv
+import uuid
+import time
+import random
 from datetime import datetime
-from fpdf import FPDF
+
 import pandas as pd
-import io
+import streamlit as st
 
-# --- 1. 頁面基本設定 ---
-st.set_page_config(page_title="CyberSec Pricing Exp", layout="centered", page_icon="🛡️")
+# =========================
+# 1. 基本設定
+# =========================
+st.set_page_config(
+    page_title="Cybersecurity Label Experiment",
+    page_icon="🛡️",
+    layout="centered"
+)
 
-# --- 2. CSS 樣式 ---
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap');
-    .stApp { background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%); font-family: 'Inter', sans-serif; color: #e0e6ed; }
-    
-    .brand-text { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
-    .price-tag { font-family: 'Rajdhani', sans-serif; color: #00f2ff; font-size: 2.5em; font-weight: 700; margin: 10px 0; }
-    
-    .price-comparison { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border: 1px solid #444; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .math-highlight { color: #ff5252; font-weight: bold; font-size: 1.2em; background: rgba(255, 82, 82, 0.1); padding: 2px 8px; border-radius: 4px;}
-    
-    .stButton>button { background: linear-gradient(90deg, #00c853, #64dd17); color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 12px; transition: all 0.3s; }
-    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(100, 255, 100, 0.4); }
-    
-    .trust-badge {
-        border: 2px solid #ffd700;
-        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.8));
-        padding: 15px;
+CSV_FILE = "experiment_data_v2.csv"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+        color: #e8eef5;
+    }
+    .card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
         border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
-        position: relative;
-        overflow: hidden;
-        margin-top: 20px;
+        padding: 18px;
+        margin-bottom: 16px;
     }
-    .trust-badge::before { content: "★ ★ ★ ★ ★"; display: block; color: #ffd700; font-size: 0.8em; letter-spacing: 3px; margin-bottom: 5px; }
-    .trust-title { color: #ffd700; font-weight: bold; font-size: 1.1em; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; }
-    
-    .internal-signal { 
-        border-left: 4px solid #607d8b; 
-        background: rgba(96, 125, 139, 0.1);
-        padding: 15px; 
-        color: #b0bec5; 
-        font-style: italic; 
-        border-radius: 0 8px 8px 0;
-        margin-top: 20px;
+    .brand {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 1px;
     }
-    
-    .product-image-container img {
+    .subtle {
+        color: #b7c4d1;
+        font-size: 0.95rem;
+    }
+    .price {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #00e5ff;
+    }
+    .signal-strong {
+        border: 2px solid #ffd54f;
+        background: rgba(255, 213, 79, 0.08);
         border-radius: 12px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        border: 1px solid rgba(255,255,255,0.1);
+        padding: 16px;
+        margin-top: 12px;
     }
-</style>
-""", unsafe_allow_html=True)
+    .signal-weak {
+        border-left: 4px solid #90a4ae;
+        background: rgba(144, 164, 174, 0.08);
+        border-radius: 0 10px 10px 0;
+        padding: 16px;
+        margin-top: 12px;
+    }
+    .scenario-high {
+        background: rgba(255, 87, 34, 0.10);
+        border-left: 5px solid #ff7043;
+        border-radius: 8px;
+        padding: 18px;
+        margin-bottom: 16px;
+    }
+    .scenario-low {
+        background: rgba(33, 150, 243, 0.10);
+        border-left: 5px solid #42a5f5;
+        border-radius: 8px;
+        padding: 18px;
+        margin-bottom: 16px;
+    }
+    .small-note {
+        color: #9fb0c3;
+        font-size: 0.88rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# --- 3. 數據儲存與 PDF 生成功能 ---
-CSV_FILE = 'experiment_data.csv'
+# =========================
+# 2. 工具函數
+# =========================
+def init_session():
+    if "participant_id" not in st.session_state:
+        st.session_state["participant_id"] = str(uuid.uuid4())[:8]
 
-def save_to_csv(data):
+    if "condition_initialized" not in st.session_state:
+        st.session_state["condition_initialized"] = True
+        st.session_state["signal_type"] = random.choice(["High_Signal", "Low_Signal"])
+        st.session_state["privacy_context"] = random.choice(["High_Privacy", "Low_Privacy"])
+        st.session_state["step"] = "intro"
+        st.session_state["submitted"] = False
+        st.session_state["opened_signal_doc"] = False
+        st.session_state["product_time_sec"] = 0.0  # 記錄商品頁停留時間
+
+    if "page_start_time" not in st.session_state:
+        st.session_state["page_start_time"] = time.time()
+
+def set_step(step_name: str):
+    st.session_state["step"] = step_name
+    st.session_state["page_start_time"] = time.time()
+    st.rerun()
+
+def get_elapsed_seconds():
+    return round(time.time() - st.session_state.get("page_start_time", time.time()), 2)
+
+def save_to_csv(data: dict):
     file_exists = os.path.isfile(CSV_FILE)
-    with open(CSV_FILE, mode='a', newline='', encoding='utf-8-sig') as f:
-        writer = csv.DictWriter(f, fieldnames=data.keys())
+    with open(CSV_FILE, mode="a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=list(data.keys()))
         if not file_exists:
             writer.writeheader()
         writer.writerow(data)
 
-def create_pdf_bytes(prod_name_en, signal_type):
-    # 注意：這裡接收的是英文名稱 prod_name_en，避免 UnicodeEncodeError
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    
-    # 標題
-    pdf.set_font("Arial", 'B', size=24)
-    pdf.cell(200, 20, txt="CYBERSECURITY DOCUMENT", ln=True, align='C')
-    pdf.line(10, 30, 200, 30)
-    pdf.ln(20)
-    
-    # 內容
-    pdf.set_font("Arial", size=14)
-    # 使用英文名稱寫入 PDF
-    pdf.cell(200, 10, txt=f"Product Name: {prod_name_en}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='L')
-    pdf.ln(10)
-    
-    if signal_type == 'High_Signal':
-        pdf.set_text_color(220, 150, 0) # 金色
-        pdf.set_font("Arial", 'B', size=18)
-        pdf.cell(200, 15, txt="CERTIFICATE OF COMPLIANCE", ln=True, align='C')
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"This is to certify that the product '{prod_name_en}' has successfully passed the Third-Party IoT Penetration Testing and meets the International Cybersecurity Standard (ISO/IEC 27402).\n\nCertification Level: GOLD\nTesting Lab: SecureLab Intl.")
-    else:
-        pdf.set_text_color(100, 100, 100) # 灰色
-        pdf.set_font("Arial", 'B', size=18)
-        pdf.cell(200, 15, txt="MANUFACTURER DECLARATION", ln=True, align='C')
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"We, the manufacturer, hereby declare that the product '{prod_name_en}' is designed with security features to protect user privacy. We are committed to providing regular firmware updates.\n\nType: Self-Assessment Declaration\nIssuer: Internal QA Team.")
-
-    pdf.ln(30)
-    pdf.set_font("Arial", 'I', size=10)
-    pdf.cell(200, 10, txt="(This is a simulated document for experiment purposes)", ln=True, align='C')
-
-    return pdf.output(dest='S').encode('latin-1')
-
-# --- 4. 狀態管理 ---
-if 'init' not in st.session_state:
-    st.session_state.clear()
-    st.session_state['init'] = True
-    st.session_state['security_level'] = random.choice(['High_Signal', 'Low_Signal'])
-    st.session_state['privacy_risk'] = random.choice(['High_Risk', 'Low_Risk'])
-    
-    st.session_state['step'] = 'intro'
-    st.session_state['submitted'] = False
-
-    if st.session_state['privacy_risk'] == 'High_Risk':
-        st.session_state['base_price'] = 8000
-    else:
-        st.session_state['base_price'] = 750
-
-def go_next(step_name):
-    st.session_state['step'] = step_name
+def reset_for_next_participant():
+    keys_to_keep = []
+    for k in list(st.session_state.keys()):
+        if k not in keys_to_keep:
+            del st.session_state[k]
     st.rerun()
 
-# --- 5. 頁面函數 ---
+def get_product_info(privacy_context: str):
+    """
+    動態切換情境文字與 GitHub 上的圖片檔名
+    """
+    info = {
+        "brand": "SecureView",
+        "product_name": "SecureView Home Cam X1",
+        "category": "無線家用攝影裝置",
+        "features": "2K 高畫質 / 夜視 / App 遠端查看 / 雙向語音",
+        "base_price": 8000
+    }
 
-def render_scenario_priming(risk_type):
-    st.markdown("## 📢 步驟 1/3：購物情境")
-    
-    if risk_type == 'High_Risk':
-        scenario_html = """
-        <div style="background:rgba(255,87,34,0.1); padding:20px; border-left:5px solid #ff5722; border-radius:5px;">
-            <h3 style="color:#ffab91; margin-top:0;">👶 情境：守護新生兒</h3>
-            <p>您是新手爸媽，為了能隨時查看嬰兒狀況，計畫購買一台<b>「高畫質無線監控攝影機」</b>。</p>
-            <p>ℹ️ 市場行情：一般基本款（無特別強調資安）售價約 <b>NT$ 8,000</b>。</p>
-            <p>⚠️ <b>您的擔憂：</b>近期駭客入侵家用攝影機的新聞頻傳，您對於<b>「隱私外洩」</b>感到相當焦慮。</p>
-        </div>
-        """
-    else:
-        scenario_html = """
-        <div style="background:rgba(33,150,243,0.1); padding:20px; border-left:5px solid #2196f3; border-radius:5px;">
-            <h3 style="color:#90caf9; margin-top:0;">💡 情境：智慧照明</h3>
-            <p>您想換一顆可用手機 App 控制的<b>「智慧 LED 燈泡」</b>。</p>
-            <p>ℹ️ 市場行情：一般基本款（無特別強調資安）售價約 <b>NT$ 750</b>。</p>
-            <p>ℹ️ <b>您的想法：</b>此設備僅控制燈光，功能單純，您認為<b>隱私風險較低</b>。</p>
-        </div>
-        """
-    
-    st.markdown(scenario_html, unsafe_allow_html=True)
-    st.write("")
-    if st.button("了解行情，前往商店選購 ➡️"):
-        go_next('store')
-
-def render_product_page(risk_type, security_level, base_price):
-    display_price = int(base_price * 1.2)
-    
-    c1, c2 = st.columns([3, 1])
-    with c1: st.markdown('<div class="brand-text">CYBER<span style="color:#00f2ff">STORE</span></div>', unsafe_allow_html=True)
-    with c2: st.caption("🛒 Guest_User_007")
-    st.markdown("---")
-
-    # 產品內容設定 (區分 中文顯示名 與 英文PDF名)
-    if risk_type == 'High_Risk':
-        prod_name = "SecureView 寶寶監視器 Pro"
-        prod_name_en = "SecureView Baby Monitor Pro" # 英文版名稱 (避免PDF亂碼)
-        desc = "4K 高畫質 / AI 哭聲偵測 / 雙向語音"
-        img_file = "camera.jpg"
-    else:
-        prod_name = "LumiSmart 智慧燈泡 Plus"
-        prod_name_en = "LumiSmart Smart Bulb Plus"   # 英文版名稱 (避免PDF亂碼)
-        desc = "1600萬色 / 音樂律動 / 語音助理支援"
-        img_file = "bulb.jpg"
-
-    c_img, c_info = st.columns([1, 1.2])
-    
-    with c_img:
-        st.markdown('<div class="product-image-container">', unsafe_allow_html=True)
-        try:
-            if os.path.exists(img_file):
-                st.image(img_file, use_column_width=True)
-            else:
-                st.error(f"找不到圖片: {img_file}")
-                st.caption("請確認 GitHub 上已上傳圖片")
-        except Exception as e:
-             st.error(f"圖片載入錯誤: {e}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.write("")
-        # --- 關鍵變因：資安訊號 ---
-        if security_level == 'High_Signal':
-            st.markdown("""
-            <div class="trust-badge">
-                <div class="trust-title">🛡️ IoT Cybersecurity</div>
-                <div style="font-size:0.8em; color:#fff; margin-top:5px;">GOLD CERTIFIED</div>
-                <hr style="border-top: 1px solid rgba(255,215,0,0.5); margin:8px 0;">
-                <small style="color:#ddd;">通過第三方滲透測試<br>符合國際資安標準</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 生成 PDF (傳入英文名稱)
-            pdf_bytes = create_pdf_bytes(prod_name_en, "High_Signal")
-            st.download_button(
-                label="📄 下載第三方資安證書 (PDF)",
-                data=pdf_bytes,
-                file_name=f"{prod_name_en}_Certificate.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-            
-        else:
-            st.markdown("""
-            <div class="internal-signal">
-                <b>🔒 廠商自主聲明：</b><br>
-                <small>本產品由原廠工程團隊精心設計，致力於保護您的使用安全與隱私。</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 生成 PDF (傳入英文名稱)
-            pdf_bytes = create_pdf_bytes(prod_name_en, "Low_Signal")
-            st.download_button(
-                label="📄 下載原廠安全聲明書 (PDF)",
-                data=pdf_bytes,
-                file_name=f"{prod_name_en}_Declaration.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-
-    with c_info:
-        st.markdown(f"## {prod_name}")
-        st.markdown(f"<p style='color:#bbb;'>{desc}</p>", unsafe_allow_html=True)
-        
-        st.markdown(f'<div class="price-tag">NT$ {display_price:,}</div>', unsafe_allow_html=True)
-        st.caption("含稅 | 24h 快速到貨 | 1年原廠保固")
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("加入購物車並結帳"):
-            with st.spinner("安全連線中..."): time.sleep(0.5)
-            go_next('survey')
-
-def render_survey(risk_type, security_level, base_price):
-    display_price = int(base_price * 1.2)
-    diff_price = display_price - base_price
-    
-    signal_desc = "獲得「IoT 資安金級標章（第三方認證）」" if security_level == 'High_Signal' else "提供「廠商自主資安聲明」"
-
-    st.markdown("## 📋 步驟 2/3：價值評估")
-    st.info("系統提示：訂單已成立。請協助填寫以下滿意度調查，以完成交易。")
-
-    with st.form("data_form"):
-        st.markdown(f"""
-        <div class="price-comparison">
-            <h4 style="margin-top:0;">💰 價格分析</h4>
-            <p>我們注意到您購買的產品價格略高於市場行情：</p>
-            <ul>
-                <li>一般市售同級產品（無特別資安強調）：<b>NT$ {base_price:,}</b></li>
-                <li>您選購的產品（{signal_desc}）：<b>NT$ {display_price:,}</b></li>
-            </ul>
-            <hr style="border-color:#555;">
-            <p style="text-align:right;">您多支付了： <span class="math-highlight">NT$ {diff_price:,} (+20%)</span></p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.write(f"**1. 考慮到此產品{signal_desc}，您認為多付這 20% (NT$ {diff_price}) 的費用是合理的嗎？**")
-        q1_score = st.slider("請滑動評分 (1=非常不合理, 7=非常合理)", 1, 7, 4)
-
-        st.write("**2. 承上題，如果價差進一步擴大，變成貴 30% (即再多加 10%)，您的購買意願是？**")
-        q2_wtp_30 = st.select_slider("請選擇", options=["絕對不買", "不太會買", "可能會買", "一定會買"], value="可能會買")
-        
-        st.write("**3. 您認為這個產品發生「隱私外洩（如被駭客偷看）」的風險有多高？**")
-        q3_risk_perc = st.slider("風險感知 (1=非常安全, 7=非常危險)", 1, 7, 4)
-
-        st.write("**4. 您有多信任這個產品提供的資安保障？**")
-        q4_trust = st.slider("信任程度 (1=完全不信, 7=非常信任)", 1, 7, 4)
-
-        if st.form_submit_button("提交並結束實驗"):
-            record = {
-                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Product_Type": risk_type,
-                "Signal_Type": security_level,
-                "Base_Price": base_price,
-                "Diff_Price": diff_price,
-                "Q1_Reasonableness_20pct": q1_score,
-                "Q2_WTP_30pct": q2_wtp_30,
-                "Q3_Risk_Perception": q3_risk_perc,
-                "Q4_Trust_Level": q4_trust
-            }
-            save_to_csv(record)
-            st.session_state['submitted'] = True
-            st.rerun()
-
-    if st.session_state['submitted']:
-        st.success("✅ 數據已成功儲存！感謝您的參與。")
-        st.balloons()
-        
-        if st.button("重置實驗 (下一位受測者)"):
-            st.session_state.clear()
-            st.rerun()
-
-# --- 6. 流程控制 ---
-if st.session_state['step'] == 'intro':
-    st.title("🛡️ 智慧家電消費決策實驗")
-    st.markdown("""
-    歡迎參與本實驗。
-    本實驗將模擬真實的網購情境，請您放鬆心情，依照您的**直覺**進行判斷與決策。
-    
-    * 實驗時間：約 2 分鐘
-    * 您的數據僅供學術研究使用
-    """)
-    if st.button("開始實驗"): go_next('priming')
-
-elif st.session_state['step'] == 'priming':
-    render_scenario_priming(st.session_state['privacy_risk'])
-
-elif st.session_state['step'] == 'store':
-    render_product_page(st.session_state['privacy_risk'], 
-                       st.session_state['security_level'], 
-                       st.session_state['base_price'])
-
-elif st.session_state['step'] == 'survey':
-    render_survey(st.session_state['privacy_risk'], 
-                 st.session_state['security_level'], 
-                 st.session_state['base_price'])
-
-# --- 7. (管理員用) 數據下載區 ---
-st.sidebar.markdown("---")
-st.sidebar.header("🔧 管理員專區")
-admin_password = st.sidebar.text_input("輸入管理密碼下載數據", type="password")
-
-if admin_password == "1234":
-    if os.path.exists(CSV_FILE):
-        df = pd.read_csv(CSV_FILE)
-        st.sidebar.write(f"目前已收集: {len(df)} 筆數據")
-        
-        csv_data = df.to_csv(index=False).encode('utf-8-sig')
-        st.sidebar.download_button(
-            label="📥 下載實驗數據 (CSV)",
-            data=csv_data,
-            file_name="experiment_results.csv",
-            mime="text/csv"
+    if privacy_context == "High_Privacy":
+        info["scenario_title"] = "高隱私敏感情境：嬰兒房／臥室照護"
+        info["scenario_icon"] = "👶"
+        info["scenario_class"] = "scenario-high"
+        info["image_file"] = "baby.PNG"  # 👈 對應您 GitHub 上傳的高風險圖片
+        info["scenario_desc"] = (
+            "您正考慮購買一台家用攝影裝置，用於嬰兒房或臥室照護。"
+            "由於此情境涉及家庭私密空間、兒童活動與日常作息，"
+            "若影像遭未授權存取，可能造成明顯的隱私風險與心理壓力。"
         )
     else:
-        st.sidebar.warning("目前尚無數據")
+        info["scenario_title"] = "低隱私敏感情境：玄關外／車庫監看"
+        info["scenario_icon"] = "🚪"
+        info["scenario_class"] = "scenario-low"
+        info["image_file"] = "garage.PNG"  # 👈 對應您 GitHub 上傳的低風險圖片
+        info["scenario_desc"] = (
+            "您正考慮購買一台家用攝影裝置，用於玄關外或車庫等外部空間監看。"
+            "此情境雖然仍涉及安全與監控功能，但相較於室內私密空間，"
+            "您認為資料暴露造成的隱私敏感程度較低。"
+        )
+    return info
+
+def get_price_schedule(base_price: int):
+    premiums = [0, 5, 10, 15, 20, 25, 30]
+    rows = []
+    for p in premiums:
+        target_price = int(round(base_price * (1 + p / 100)))
+        rows.append({
+            "premium_pct": p,
+            "target_price": target_price
+        })
+    return rows
+
+def infer_wtp_switch(responses: dict):
+    accepted = []
+    for pct in sorted(responses.keys()):
+        if responses[pct] == "會":
+            accepted.append(pct)
+    if len(accepted) == 0:
+        return -1
+    return max(accepted)
+
+# =========================
+# 3. 畫面區塊
+# =========================
+def render_intro():
+    st.title("🛡️ 智慧設備消費決策研究")
+    st.markdown(
+        """
+        歡迎參與本研究。  
+        本研究將模擬一段簡短的商品評估情境，請您依照**直覺與真實想法**回答。
+
+        - 作答時間：約 3–5 分鐘
+        - 您的資料僅供學術研究分析
+        - 本研究不蒐集不必要之個人身分資訊
+        """
+    )
+    with st.expander("研究參與說明"):
+        st.write(
+            "您將閱讀一段商品情境與產品資訊，接著回答幾個關於風險、信任、"
+            "購買意願與價格判斷的問題。您可隨時停止作答。"
+        )
+    if st.button("開始研究"):
+        set_step("scenario")
+
+def render_scenario():
+    info = get_product_info(st.session_state["privacy_context"])
+    st.markdown("## 步驟 1/4：使用情境")
+    st.markdown(
+        f"""
+        <div class="{info["scenario_class"]}">
+            <h3>{info["scenario_icon"]} {info["scenario_title"]}</h3>
+            <p>{info["scenario_desc"]}</p>
+            <p><b>市場基準價格：</b>約 NT$ {info["base_price"]:,}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("請想像您正在評估是否購買此產品，接下來您將看到一個商品頁面。")
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("返回上一頁"):
+            set_step("intro")
+    with col2:
+        if st.button("查看商品頁面"):
+            set_step("product")
+
+def render_product():
+    info = get_product_info(st.session_state["privacy_context"])
+    base_price = info["base_price"]
+    display_price = int(round(base_price * 1.20))
+    signal_type = st.session_state["signal_type"]
+
+    st.markdown("## 步驟 2/4：商品資訊")
+    st.markdown('<div class="brand">CYBERSTORE</div>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    left, right = st.columns([1, 1.2])
+    with left:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        # 讀取對應的圖片 (動態抓取 GitHub 上的 baby.PNG 或 garage.PNG)
+        img_path = info["image_file"]
+        if os.path.exists(img_path):
+            st.image(img_path, use_container_width=True)
+        else:
+            st.warning(f"⚠️ 找不到圖片：{img_path}")
+            st.info("請確認 GitHub 上的檔名與大小寫是否完全一致。")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with right:
+        st.markdown(f"### {info['product_name']}")
+        st.markdown(f"**產品類型：** {info['category']}")
+        st.markdown(f"**主要功能：** {info['features']}")
+        st.markdown(f'<div class="price">NT$ {display_price:,}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="subtle">含稅／標準保固／App 支援</div>', unsafe_allow_html=True)
+
+        if signal_type == "High_Signal":
+            st.markdown(
+                """
+                <div class="signal-strong">
+                    <b>🛡️ 第三方產品級資安標示</b><br>
+                    本產品通過第三方檢測機構之產品級安全測試，
+                    並取得獨立驗證之資安標示。<br><br>
+                    <span class="small-note">
+                    文件內容強調：具基本帳號保護、更新機制與安全設定要求。
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                """
+                <div class="signal-weak">
+                    <b>🔒 品牌自述式隱私／資安聲明</b><br>
+                    本品牌表示產品設計重視使用者隱私與安全，
+                    並承諾將持續改善系統防護。<br><br>
+                    <span class="small-note">
+                    文件內容為品牌自我聲明，未呈現外部驗證資訊。
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    with st.expander("查看資安資訊文件"):
+        st.session_state["opened_signal_doc"] = True
+        if signal_type == "High_Signal":
+            st.write(
+                "文件摘要：本產品已完成第三方產品級安全測試，"
+                "測試內容包含帳號保護、軟體更新、基本設定安全與未授權存取防護等。"
+            )
+        else:
+            st.write(
+                "文件摘要：本品牌表示產品設計已考量使用者隱私與安全，"
+                "並由內部團隊持續維護產品品質。"
+            )
+
+    st.markdown("---")
+    st.markdown("請依據目前看到的資訊，進行後續評估。")
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("返回情境頁"):
+            set_step("scenario")
+    with col2:
+        if st.button("進入評估問卷"):
+            st.session_state["product_time_sec"] = get_elapsed_seconds()
+            set_step("survey")
+
+def render_survey():
+    info = get_product_info(st.session_state["privacy_context"])
+    base_price = info["base_price"]
+    signal_type = st.session_state["signal_type"]
+    page_time_sec = get_elapsed_seconds()
+    
+    # 建立 1~7 分的選項陣列，供轉換 Slider 使用
+    scale_7 = [1, 2, 3, 4, 5, 6, 7]
+
+    st.markdown("## 步驟 3/4：評估問卷")
+    st.info("請根據您剛剛看到的商品資訊與情境，回答以下問題。（請注意：所有題目皆為必填）")
+
+    with st.form("experiment_form"):
+        st.markdown("### A. 操弄檢查與主要心理變數")
+
+        attention_check = st.radio(
+            "注意力檢查：您剛剛看到的產品是什麼類型？",
+            ["智慧燈泡", "家用攝影裝置", "智慧手錶", "藍牙耳機"],
+            index=None
+        )
+
+        signal_source_check = st.radio(
+            "您剛剛看到的安全資訊主要來自哪一種來源？",
+            ["第三方驗證／獨立標示", "品牌自行聲明", "我不確定"],
+            index=None
+        )
+
+        st.markdown("#### 訊號可信度 (1=非常不同意，7=非常同意)")
+        q_sc_1 = st.radio("我認為該資安資訊是可信的。", scale_7, horizontal=True, index=None, key="sc1")
+        q_sc_2 = st.radio("我認為該資安資訊具有專業性。", scale_7, horizontal=True, index=None, key="sc2")
+        q_sc_3 = st.radio("我認為該資安資訊能真實反映產品安全品質。", scale_7, horizontal=True, index=None, key="sc3")
+
+        st.markdown("#### 感知隱私風險 (1=非常不同意，7=非常同意)")
+        q_pr_1 = st.radio("我擔心此產品可能造成隱私外洩。", scale_7, horizontal=True, index=None, key="pr1")
+        q_pr_2 = st.radio("我擔心此產品可能被未授權存取。", scale_7, horizontal=True, index=None, key="pr2")
+        q_pr_3 = st.radio("我認為使用此產品會讓我承擔隱私風險。", scale_7, horizontal=True, index=None, key="pr3")
+
+        st.markdown("#### 品牌信任 (1=非常不同意，7=非常同意)")
+        q_bt_1 = st.radio("我認為這個品牌是可靠的。", scale_7, horizontal=True, index=None, key="bt1")
+        q_bt_2 = st.radio("我相信這個品牌會顧及使用者利益。", scale_7, horizontal=True, index=None, key="bt2")
+        q_bt_3 = st.radio("我相信這個品牌不會讓我承擔不必要的資料安全風險。", scale_7, horizontal=True, index=None, key="bt3")
+
+        st.markdown("#### 購買意願 (1=非常不同意，7=非常同意)")
+        q_pi_1 = st.radio("若我近期有需求，我會考慮購買此產品。", scale_7, horizontal=True, index=None, key="pi1")
+        q_pi_2 = st.radio("我願意把此產品列入優先考慮名單。", scale_7, horizontal=True, index=None, key="pi2")
+        q_pi_3 = st.radio("整體而言，我對此產品有購買傾向。", scale_7, horizontal=True, index=None, key="pi3")
+
+        st.markdown("---")
+        st.markdown("### B. 價格評估（多重價格列表）")
+        st.write(
+            f"請假設市場上**一般同類產品基準價格**約為 **NT$ {base_price:,}**。"
+            "以下請您在每個價差條件下，判斷您是否仍會選擇目前這個產品。"
+        )
+
+        price_rows = get_price_schedule(base_price)
+        mpl_answers = {}
+
+        for row in price_rows:
+            pct = row["premium_pct"]
+            target_price = row["target_price"]
+            answer = st.radio(
+                f"若此產品售價為 NT$ {target_price:,}（比基準價高 {pct}%），您是否仍會選擇此產品？",
+                ["會", "不會"],
+                horizontal=True,
+                index=None,
+                key=f"mpl_{pct}"
+            )
+            mpl_answers[pct] = answer
+
+        st.markdown("---")
+        st.markdown("### C. 背景變數")
+
+        privacy_concern = st.radio("整體而言，我平時很重視個人隱私。(1=非常不同意，7=非常同意)", scale_7, horizontal=True, index=None, key="bg1")
+        digital_familiarity = st.radio("我對智慧家電／聯網設備相當熟悉。(1=非常不同意，7=非常同意)", scale_7, horizontal=True, index=None, key="bg2")
+        data_breach_experience = st.radio(
+            "您是否曾有帳號外洩、詐騙或個資風險相關經驗？",
+            ["有", "沒有", "不確定"],
+            index=None
+        )
+
+        submit = st.form_submit_button("提交問卷")
+
+        if submit:
+            all_required_fields = [
+                attention_check, signal_source_check, 
+                q_sc_1, q_sc_2, q_sc_3, q_pr_1, q_pr_2, q_pr_3,
+                q_bt_1, q_bt_2, q_bt_3, q_pi_1, q_pi_2, q_pi_3,
+                privacy_concern, digital_familiarity, data_breach_experience
+            ] + list(mpl_answers.values())
+            
+            if None in all_required_fields:
+                st.error("⚠️ 提交失敗：請確認「所有題目」皆已點選作答（包含價格評估與背景變數）。")
+            else:
+                signal_credibility_avg = round((q_sc_1 + q_sc_2 + q_sc_3) / 3, 3)
+                privacy_risk_avg = round((q_pr_1 + q_pr_2 + q_pr_3) / 3, 3)
+                brand_trust_avg = round((q_bt_1 + q_bt_2 + q_bt_3) / 3, 3)
+                purchase_intention_avg = round((q_pi_1 + q_pi_2 + q_pi_3) / 3, 3)
+
+                highest_accepted_premium = infer_wtp_switch(mpl_answers)
+
+                sorted_keys = sorted(mpl_answers.keys())
+                numeric_pattern = [1 if mpl_answers[k] == "會" else 0 for k in sorted_keys]
+                non_monotonic = False
+                seen_zero = False
+                for v in numeric_pattern:
+                    if v == 0:
+                        seen_zero = True
+                    if seen_zero and v == 1:
+                        non_monotonic = True
+                        break
+
+                record = {
+                    "participant_id": st.session_state["participant_id"],
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "signal_type": signal_type,
+                    "privacy_context": st.session_state["privacy_context"],
+                    "product_name": info["product_name"],
+                    "base_price": base_price,
+                    "opened_signal_doc": st.session_state["opened_signal_doc"],
+                    "product_page_time_sec": st.session_state.get("product_time_sec", 0),
+                    "survey_page_time_sec": page_time_sec,
+                    "attention_check_product": attention_check,
+                    "signal_source_check": signal_source_check,
+                    "q_sc_1": q_sc_1, "q_sc_2": q_sc_2, "q_sc_3": q_sc_3,
+                    "signal_credibility_avg": signal_credibility_avg,
+                    "q_pr_1": q_pr_1, "q_pr_2": q_pr_2, "q_pr_3": q_pr_3,
+                    "privacy_risk_avg": privacy_risk_avg,
+                    "q_bt_1": q_bt_1, "q_bt_2": q_bt_2, "q_bt_3": q_bt_3,
+                    "brand_trust_avg": brand_trust_avg,
+                    "q_pi_1": q_pi_1, "q_pi_2": q_pi_2, "q_pi_3": q_pi_3,
+                    "purchase_intention_avg": purchase_intention_avg,
+                    "mpl_0": mpl_answers[0], "mpl_5": mpl_answers[5], "mpl_10": mpl_answers[10],
+                    "mpl_15": mpl_answers[15], "mpl_20": mpl_answers[20], "mpl_25": mpl_answers[25], "mpl_30": mpl_answers[30],
+                    "highest_accepted_premium_pct": highest_accepted_premium,
+                    "mpl_non_monotonic": non_monotonic,
+                    "privacy_concern": privacy_concern,
+                    "digital_familiarity": digital_familiarity,
+                    "data_breach_experience": data_breach_experience
+                }
+
+                save_to_csv(record)
+                st.session_state["submitted"] = True
+                set_step("thanks")
+
+def render_thanks():
+    st.markdown("## 步驟 4/4：完成")
+    st.success("✅ 您已完成本研究，感謝您的參與。")
+    st.balloons()
+    st.write(f"受試者編號：**{st.session_state['participant_id']}**")
+    if st.button("下一位受試者"):
+        reset_for_next_participant()
+
+def render_sidebar_admin():
+    st.sidebar.markdown("---")
+    st.sidebar.header("🔧 管理員專區")
+
+    if ADMIN_PASSWORD:
+        admin_input = st.sidebar.text_input("輸入管理密碼", type="password")
+        if admin_input == ADMIN_PASSWORD:
+            if os.path.exists(CSV_FILE):
+                df = pd.read_csv(CSV_FILE)
+                st.sidebar.success(f"目前已收集 {len(df)} 筆資料")
+                csv_data = df.to_csv(index=False).encode("utf-8-sig")
+                st.sidebar.download_button(
+                    label="📥 下載資料 CSV",
+                    data=csv_data,
+                    file_name="experiment_data_v2.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.sidebar.warning("目前尚無資料。")
+    else:
+        st.sidebar.caption("未設定 ADMIN_PASSWORD 環境變數，管理下載功能已停用。")
+
+# =========================
+# 4. 主流程
+# =========================
+init_session()
+render_sidebar_admin()
+
+step = st.session_state["step"]
+
+if step == "intro":
+    render_intro()
+elif step == "scenario":
+    render_scenario()
+elif step == "product":
+    render_product()
+elif step == "survey":
+    render_survey()
+elif step == "thanks":
+    render_thanks()
